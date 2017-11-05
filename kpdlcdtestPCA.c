@@ -33,6 +33,7 @@ void pause(void);
 
 // Global variables
 unsigned int Counts, nCounts, nOverflows, printCount;
+unsigned int firstDigit, secondDigit, finalNumber;
 
 //*****************************************************************************
 void main(void)
@@ -54,6 +55,7 @@ void main(void)
     lcd_print("Calibration:\nHello world!\n012_345_678:\nabc def ghij");
     while (1)
     {
+		/*
         keypad = read_keypad();
         pause();    // This pauses for 1 PCA0 counter clock cycle (20ms) 
                     // If the keypad is read too frequently (no delay), it will
@@ -63,12 +65,41 @@ void main(void)
         {           // Note: fast read results in multiple lines on terminal
                     // A longer delay will reduce multiple keypad reads but a
                     // better approach is to wait for a 0xFF between keystrokes.
-            lcd_clear();
+            
+			lcd_clear();
             lcd_print("Your key was:\n %c,  = Hex %X", keypad, keypad);
             printf("\n\rYour key was: %c,  = Hex %X", keypad, keypad);
-            if(keypad == 0)printf("   **Wire Connection/XBR0 Error**   ");
+            
+			if(keypad == 0)printf("   **Wire Connection/XBR0 Error**   ");	// A returned value of 0 (0x00) indicates wiring error
 			printCount++;	//Keeps track of whether or not keypad has already printed
-        }           // A returned value of 0 (0x00) indicates wiring error
+        }
+		*/
+		
+		keypad = read_keypad();
+		pause();
+		
+		if (keypad == 0xFF && printCount == 0) printCount = 1;	//keypad must be in a state of "non-press" before firstDigit can be assigned
+		
+		if (keypad == 0xFF && printCount == 2) printCount = 3;	//keypad must be in a state of "non-press" before secondDigit can be assigned.
+																//Additionally, the firstDigit must be assigned before secondDigit can be assigned
+		
+		if (keypad != 0xFF && printCount == 1)
+		{
+			firstDigit = keypad;
+			
+			if(keypad == 0)printf("   **Wire Connection/XBR0 Error**   ");	// A returned value of 0 (0x00) indicates wiring error
+			printCount = 2;		//Acts as a completion flag for setting the firstDigit
+		}
+		else if (keypad != 0xFF && printCount == 3)
+		{
+			secondDigit = keypad;
+			finalNumber = (firstDigit - 0x30)*10 + (secondDigit - 0x30);
+			
+			lcd_clear();
+			lcd_print("Your num was:\n %c%c ", firstDigit, secondDigit);
+			printf("\n\rYour num was: %d", finalNumber);
+			printCount = 0;
+		}
     }
 }
 //*****************************************************************************
