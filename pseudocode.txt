@@ -1,0 +1,60 @@
+compiler directives
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <c8051_SDCC.h>
+	#include <i2c.h>  
+
+declare constants
+	#define SERVO_LEFT_PW 2395
+	#define SERVO_CENTER_PW 2825
+	#define SERVO_RIGHT_PW 3185
+
+	#define MOTOR_REVERSE_PW 2027 
+	#define MOTOR_NEUTRAL_PW 2765
+	#define MOTOR_FORWARD_PW 3502
+
+
+declare global variables
+	
+
+function prototypes
+	void Port_Init(void);
+	void Interrupt_Init(void);
+	void PCA_Init (void);
+	void SMB_Init(void);
+	void PCA_ISR (void) __interrupt 9;
+
+main function
+	Sys_Init();
+	putchar(' ');
+	Port_Init();
+	Interrupt_Init();
+	PCA_Init();
+	SMB_Init();
+
+	
+End main function
+
+
+Functions
+	Port_Init
+		Set crossbar to 0x27
+	End Port_Init
+	
+	Interrupt_Init
+		Enable PCA interrupts in EIE1
+		Enable Global Interrupts
+	End Interrupt_Init
+	
+	PCA_Init
+		Set PCA0 mode to 0x81 (Enables CF flag, SYSCLK/12)
+		Set respective PCA0CPMn's to 16-bit PWM with comparator and PWM enabled
+		Enable PCA0 counter
+	End PCA_Init
+	
+	SMB_Init
+		Set SCL to 100 kHz
+		Enable the SMBus
+	End SMB_Init
+	
+	
