@@ -104,32 +104,97 @@ void Car_Parameters(void)
 	the potentiometer is used to select the gain. This is set once with the other initializations. The
 	final value must be displayed for the user to see, and allowing the user to make adjustments until
 	a desired value is set is a nice feature.
-
-	Set Servo_PW to SERVO_CENTER_PW
-		Set Motor_PW to MOTOR_NEUTRAL_PW
-		Print instructions to select cardinal direction with keypad or computer keyboard
-		Begin infinite loop
-			Set keyboard to getchar_nw()
-			Set keypad to read_keypad()
-			Pause()
-			If keypad is '5'
-				break
-			if keyboard is 'a'
-				break
-			If keypad is not 0xFF
-				print out selected keypad direction and ask for confirmation of direction
-			If keyboard is not 0xFF
-				print out selected keyboard direction and ask for confirmation of direction
-		End infinite loop
-		If keypad is '2' OR keyboard is 'n'
-			Set desired_heading to 0
-		If keypad is '6' OR keyboard is 'e'
-			Set desired_heading to 900
-		If keypad is '8' OR keyboard is 's'
-			Set desired_heading to 1800
-		If keypad is '4' OR keyboard is 'w'
-			Set desired_heading to 2700
 	*/
+	unsigned char isPress = 0;
+	unsigned char pressCheck = 0;
+	unsigned int finalValue = 0;
+
+	Servo_PW = SERVO_CENTER_PW;		//Initialize car to straight steering and no movement
+	Motor_PW = MOTOR_NEUTRAL_PW;
+	
+	lcd_clear();
+	lcd_print("Compass direction\nWith even keys.");
+	printf("Please select a cardinal direction. North is 8, East is 6, South is 2, West is 4.\r\n");
+	while (1)
+	{
+		keyboard = getchar_nw();	//Equal to 0xFF when no key is pressed
+		keypad = read_keypad();		//Equal to 0xFF when no key is pressed
+		Pause();	//Pauses program to prevent rapid consecutive keypad reads
+		
+		if (keypad == '5' || keyboard == '5')	//5 key is used as the "enter" key
+		{
+			isPress = 0;
+			break;
+		}
+		
+		if (isPress == 1 && keypad == 0xFF && keyboard == 0xFF)	//When a key was previously held down but is currently released
+			isPress = 0;
+		
+		if (keypad != 0xFF && isPress == 0)	//Checks to see if a key is currently pressed and no key is held down
+		{
+			isPress = 1;	//Sets isPress high when a key is held down
+			finalValue = keypad;
+			lcd_clear();
+			lcd_print("You select %c\nIf sure press 5", keypad);
+		}
+		
+		if (keyboard != 0xFF && isPress == 0)	//Checks to see if a key is currently pressed and no key is held down
+		{
+			isPress = 1;	//Sets isPress high when a key is held down
+			finalValue = keyboard;
+			printf("You selected %c as your desired heading. Press 5 to confirm.\r\n", keyboard);
+		}
+	}
+	if (finalValue == '8')
+		desired_heading = 0;	//Sets heading to North
+	if (finalValue == '6')
+		desired_heading = 900;	//Sets heading to East
+	if (finalValue == '2')
+		desired_heading = 1800;	//Sets heading to South
+	if (finalValue == '4')
+		desired_heading = 2700;	//Sets heading to West
+	printf("Your desired heading has been set to %d\r\n", desired_heading);
+	lcd_clear();
+	lcd_print("You Selected %d\nFor heading", desired_heading);
+	
+	
+	printf("Set initial speed by keying in 4 numbers.\r\n");
+	lcd_clear();
+	lcd_print("Key 4 nums for \ninitial speed\n");
+	while(1)
+	{
+		keyboard = getchar_nw();	//Equal to 0xFF when no key is pressed
+		keypad = read_keypad();		//Equal to 0xFF when no key is pressed
+		Pause();	//Pauses program to prevent rapid consecutive keypad reads
+		
+		if (isPress > pressCheck && keypad == 0xFF && keyboard == 0xFF)
+			pressCheck++;
+		
+		if (pressCheck == 4)
+		{
+			printf("\r\nYou have selected a speed of %d. Press * to enter", finalValue);
+			lcd_clear();
+			lcd_print("Speed is %d\nPress # confirm");
+			isPress = pressCheck = 0;
+		}
+		
+		if (keypad == '#' || keyboard == '#')
+			break;
+		
+		if (keypad != 0xFF && isPress == pressCheck)
+		{
+			lcd_print("%c",keypad)
+			finalValue = finalValue + (unsigned int)keypad * 10^isPress;
+			isPress++;
+		}
+		if (keyboard != 0xFF && isPress == pressCheck)
+		{
+			printf("%c", keyboard);
+			finalValue = finalValue + (unsigned int)keyboard * 10^isPress;
+			isPress++;
+		}
+	}
+	
 }
 //----------------------------------------------------------------------------
 //Set_Motion
