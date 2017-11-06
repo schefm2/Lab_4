@@ -5,6 +5,14 @@ compiler directives
 	#include <i2c.h>  
 
 declare constants
+	#define ON 1
+	#define OFF 0
+
+	#define RANGER_ADDR 0xE0
+	#define COMPASS_ADDR 0xC0
+
+	#define PCA_START 28672
+
 	#define SERVO_LEFT_PW 2395
 	#define SERVO_CENTER_PW 2825
 	#define SERVO_RIGHT_PW 3185
@@ -15,24 +23,54 @@ declare constants
 
 
 declare global variables
+	__sbit __at 0xB7 SS
+
+	unsigned int PCA_overflows, desired_heading, initial_speed, Servo_PW, Motor_PW
+	unsigned char nestedCount, printCount, compassFlag, rangerFlag, keyboard, keypad
+	unsigned char Data[2]
 	
 
 function prototypes
-	void Port_Init(void);
-	void Interrupt_Init(void);
-	void PCA_Init (void);
-	void SMB_Init(void);
-	void PCA_ISR (void) __interrupt 9;
-
+	Initialization Functions
+		void Port_Init(void);
+		void Interrupt_Init(void);
+		void PCA_Init(void);
+		void ADC_Init(void);
+		void SMB_Init(void);
+		void PCA_ISR(void) __interrupt 9;
+	
+	High Level Functions
+		void Set_Motion(void);
+		void Set_Neutral(void);
+		void Car_Parameters(void);
+	
+	Low Level Functions
+		void Read_Compass(void);
+		void Read_Ranger(void);
+		void read_AD_input(void);
+		void getchar_nw(void);
+		void Set_Servo_PWM(void);
+		void Set_Motor_PWM(void);
+		void Pause(void);
+		
 main function
 	Sys_Init();
 	putchar(' ');
 	Port_Init();
 	Interrupt_Init();
 	PCA_Init();
+	ADC_Init();
 	SMB_Init();
 
+	Set PCA_overflows to 0
+	Wait while PCA_overflows < 50
 	
+	Car_Parameters();
+	
+	Begin infinite loop
+		Set_Motion();
+		Set_Neutral();
+	End infinite loop
 End main function
 
 
@@ -52,9 +90,111 @@ Functions
 		Enable PCA0 counter
 	End PCA_Init
 	
+	ADC_Init
+		Set REF0CN to 0x03 to use V_ref of 2.4V
+		Enable ADC1
+		Wait ~60 ms for capacitors to charge
+		Set gain of ADC1 to 1 using ADC1CF
+	End ADC_Init
+	
 	SMB_Init
 		Set SCL to 100 kHz
 		Enable the SMBus
 	End SMB_Init
+	
+	PCA_ISR __interrupt 9
+		If CF flag is raised
+			Lower CF flag
+			Set PCA0 to PCA_START using bit shifting and low/high bytes
+			Increment PCA_overflows
+			Increment nestedCount
+			If nestedCount >= 2
+				Raise compassFlag
+			If nestedCount >= 4
+				Raise compassFlag
+				Raise rangerFlag
+				Set nestedCount to 0
+		Else
+			Handle all other interrupt 9 flags with PCA0CN
+	End PCA_ISR __interrupt 9
+	
+	Set_Neutral
+		If SS is OFF
+			Set Servo_PW to SERVO_CENTER_PW
+			Set Motor_PW to MOTOR_NEUTRAL_PW
+			Wait while (SS is OFF)
+	End Set_Neutral
+	
+	Set_Motion
+		Read_Compass()
+		Read_Ranger()
+		Set_Servo_PWM()
+		Set_Motor_PWM()
+	End Set_Motion
+	
+	Car_Parameters
+		Set Servo_PW to SERVO_CENTER_PW
+		Set Motor_PW to MOTOR_NEUTRAL_PW
+		Print instructions to select heading with keypad or computer keyboard
+		Set keyboard to getchar()
+		If keyboard is 'a'
+			Print cardinal directions and instructions for selecting one
+			Begin infinite loop
+				Set keypad to read_keypad()
+				Pause()
+				If keypad is not 0xFF
+					break
+			End infinite loop
+			If keypad is '2'
+				Set desired_heading to 0
+			If keypad is '6'
+				Set desired_heading to 900
+			If keypad is '8'
+				Set desired_heading to 1800
+			If keypad is '4'
+				Set desired_heading to 2700
+		If keyboard is 'l'
+			Print cardinal directions and instructions for selecting one
+			Set keyboard to getchar()
+			If keyboard is 'n'
+				Set desired_heading to 0
+			If keyboard is 'e'
+				Set desired_heading to 900
+			If keyboard is 's'
+				Set desired_heading to 1800
+			If keyboard is 'w'
+				Set desired_heading to 2700
+	End Car_Parameters
+	
+	Read_Compass
+		If compassFlag is raised
+			lower compassFlag
+	End Read_Compass
+	
+	Read_Ranger
+		If rangerFlag is raised
+			lower rangerFlag
+	End Read_Ranger
+	
+	Set_Servo_PWM
+	
+	End Set_Servo_PWM
+	
+	Set_Motor_PWM
+	
+	End Set_Motor_PWM
+	
+	Pause
+		Set nestedCount to 0
+		Wait until nestedCount >= 6
+	End Pause
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
