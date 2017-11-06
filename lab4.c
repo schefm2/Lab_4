@@ -1,5 +1,6 @@
 /* Sample code for speed control using PWM. */
 #include <stdio.h>
+#include <stdlib.h>
 #include <c8051_SDCC.h>
 #include <i2c.h>
 
@@ -14,21 +15,28 @@ void ADC_Init();						//Initialize the ADC converter
 void SMB_Init();
 
 //other functions
-void Min_Max(void);
-void LED_Brightness(void);
-unsigned int ReadRanger();
-void PingRanger();
+void Read_Compass(void);
+void Read_Ranger(void);
+void Read_Compass(void);
+void Read_Ranger(void);
+void Set_Servo_PWM(void);
+void Set_Motor_PWM(void);
+void Pause(void);
 
-unsigned int PW_MIN =1000;
-unsigned int PW_MAX =36700;
-unsigned int PW_NEUT =18432;
+
+void Car_Parameters(void);
+void Set_Motion(void);
+void Set_Neutral(void);
+void Print_Data(void);
+
 unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
 unsigned char r_count=0;
 unsigned char r_check=0;
 
 //sbits
-__sbit __at 0xB5 SS; //Port 3.5 slideswitch
+__sbit __at 0xB7 SS; //Port 3.5 slideswitch run/stop
+__sbit __at 0x97 POT; //Port 1.7 potentiometer
 
 //-----------------------------------------------------------------------------
 // Main Function
@@ -44,8 +52,153 @@ void main(void)
 	PCA_Init();
 	SMB_Init();
 	ADC_Init();
-}
+/*
+	Set PCA_overflows to 0
+	Wait while PCA_overflows < 50
+	
+	Car_Parameters();
+	
+	Begin infinite loop
+		Set_Motion();
+		Set_Neutral();
+		Print_Data();
+	End infinite loop
 
+	a main function that calls a read_compass()
+	function and sets the PWM for the steering servo based on the present heading and a desired
+	compass heading. 
+
+	The main code also calls a ranger function and adjusts the desired heading
+	and/or drive motor based on SecureCRT inputs when the measurement from the ultrasonic
+	sensor to an obstacle is less than a set value. 
+
+	
+
+	Display relevant values or messages on the LCD display. Once the desired heading and gains are
+	selected, the LCD should display the current heading, the current range and optionally the battery 
+	voltage. Updating the display every 400 ms or longer is reasonable. Updating more frequently is not
+	needed and should be avoided.
+
+
+
+	Tabulate the data from the compass heading error & servo motor PW value, and
+	transmit it to the SecureCRT terminal for filing and later plotting
+*/
+
+}
+//HIGH LEVEL FUNCTIONS
+//----------------------------------------------------------------------------
+//Car_Parameters
+//----------------------------------------------------------------------------
+void Car_Parameters(void)
+{
+	/*
+	Allow user to enter initial speed, desired heading, and other parameters.  This can be done by
+	pressing keys on the keyboard or keypad. The system should allow the operator to enter a specific
+	desired angle, or pick from a predefined list of 0°, 90°, 180°, 270°. If the user is to enter a
+	desired angle, the SecureCRT or LCD screen should indicate so with a prompt. If the user is to 
+	choose an angle from a predefined list, the screen should show the list along with the key press 
+	needed to select that angle. The steering gain and drive gain (only for obstacle tracking, not used 
+	here) must also be selectable. 
+	Configure the A/D converter in the C8051 to read a potentiometer voltage. As mentioned previously, 
+	the potentiometer is used to select the gain. This is set once with the other initializations. The
+	final value must be displayed for the user to see, and allowing the user to make adjustments until
+	a desired value is set is a nice feature.
+
+	Set Servo_PW to SERVO_CENTER_PW
+		Set Motor_PW to MOTOR_NEUTRAL_PW
+		Print instructions to select cardinal direction with keypad or computer keyboard
+		Begin infinite loop
+			Set keyboard to getchar_nw()
+			Set keypad to read_keypad()
+			Pause()
+			If keypad is '5'
+				break
+			if keyboard is 'a'
+				break
+			If keypad is not 0xFF
+				print out selected keypad direction and ask for confirmation of direction
+			If keyboard is not 0xFF
+				print out selected keyboard direction and ask for confirmation of direction
+		End infinite loop
+		If keypad is '2' OR keyboard is 'n'
+			Set desired_heading to 0
+		If keypad is '6' OR keyboard is 'e'
+			Set desired_heading to 900
+		If keypad is '8' OR keyboard is 's'
+			Set desired_heading to 1800
+		If keypad is '4' OR keyboard is 'w'
+			Set desired_heading to 2700
+	*/
+}
+//----------------------------------------------------------------------------
+//Set_Motion
+//----------------------------------------------------------------------------
+void Set_Motion(void)
+{
+
+}
+//----------------------------------------------------------------------------
+//Set_Neutral
+//----------------------------------------------------------------------------
+void Set_Neutral(void)
+{
+
+}
+//----------------------------------------------------------------------------
+//Print_Data
+//----------------------------------------------------------------------------
+void Print_Data(void)
+{
+	/*
+	
+	Tabulate the data from the compass heading error & servo motor PW value, and
+	transmit it to the SecureCRT terminal for filing and later plotting
+
+	If readCount > 25
+			Set readCount to 0
+			print heading_error and Motor_PW
+	*/
+}
+//LOW LEVEL FUNCTIONS
+//----------------------------------------------------------------------------
+//Read_Compass
+//----------------------------------------------------------------------------
+void Read_Compass(void)
+{
+
+}
+//----------------------------------------------------------------------------
+//Read_Ranger
+//----------------------------------------------------------------------------
+void Read_Ranger(void)
+{
+
+}
+//----------------------------------------------------------------------------
+//Set_Servo_PWM
+//----------------------------------------------------------------------------
+void Set_Servo_PWM(void)
+{
+
+}
+//----------------------------------------------------------------------------
+//Set_Motor_PWM
+//----------------------------------------------------------------------------
+void Set_Motor_PWM(void)
+{
+
+}
+//----------------------------------------------------------------------------
+//Pause
+//----------------------------------------------------------------------------
+void Pause(void)
+{
+
+}
+//----------------------------------------------------------------------------
+//ADC_Init
+//----------------------------------------------------------------------------
 void ADC_Init(void)
 {
 	REF0CN = 0x03;	//Sets V_ref as 2.4V
@@ -54,16 +207,14 @@ void ADC_Init(void)
 	//Gives capacitors in A/D converter time to charge
 	r_check=r_count; //makes sure r_count isn't altered while waiting 
 	while(r_count=<(r_check+2));
-	
-	//Resets timer0 and overflow counter
-	TMR0 = 0;
-	T0_overflows = 0;
 
 	//Sets gain to 1
 	ADC1CF |= 0x01;
 	ADC1CF &= 0xFD;
 }
-
+//-----------------------------------------------------------------------------
+//Port_Init
+//-----------------------------------------------------------------------------
 void Port_Init()
 {
 	P1MDOUT |= 0x03;//set output pin for CEX2 in push-pull mode
