@@ -4,6 +4,23 @@
 #include <c8051_SDCC.h>
 #include <i2c.h>
 
+#define ON 1
+#define OFF 0
+
+#define RANGER_ADDR 0xE0
+#define COMPASS_ADDR 0xC0
+#define PING_CM 0x51
+
+#define PCA_START 28672
+
+#define SERVO_LEFT_PW 2395
+#define SERVO_CENTER_PW 2825
+#define SERVO_RIGHT_PW 3185
+
+#define MOTOR_REVERSE_PW 2027 
+#define MOTOR_NEUTRAL_PW 2765
+#define MOTOR_FORWARD_PW 3502
+
 //-----------------------------------------------------------------------------
 // 8051 Initialization Functions
 //-----------------------------------------------------------------------------
@@ -33,6 +50,10 @@ unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
 unsigned char r_count=0;
 unsigned char r_check=0;
+unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW;
+unsigned char r_count, r_check, keyboard, keypad;
+float time;
+
 
 //sbits
 __sbit __at 0xB7 SS; //Port 3.5 slideswitch run/stop
@@ -63,28 +84,7 @@ void main(void)
 		Set_Neutral();
 		Print_Data();
 	End infinite loop
-
-	a main function that calls a read_compass()
-	function and sets the PWM for the steering servo based on the present heading and a desired
-	compass heading. 
-
-	The main code also calls a ranger function and adjusts the desired heading
-	and/or drive motor based on SecureCRT inputs when the measurement from the ultrasonic
-	sensor to an obstacle is less than a set value. 
-
-	
-
-	Display relevant values or messages on the LCD display. Once the desired heading and gains are
-	selected, the LCD should display the current heading, the current range and optionally the battery 
-	voltage. Updating the display every 400 ms or longer is reasonable. Updating more frequently is not
-	needed and should be avoided.
-
-
-
-	Tabulate the data from the compass heading error & servo motor PW value, and
-	transmit it to the SecureCRT terminal for filing and later plotting
 */
-
 }
 //HIGH LEVEL FUNCTIONS
 //----------------------------------------------------------------------------
@@ -201,29 +201,44 @@ void Car_Parameters(void)
 //----------------------------------------------------------------------------
 void Set_Motion(void)
 {
-
+	Read_Compass();
+	Read_Ranger();
+	Set_Servo_PWM();
+	Set_Motor_PWM();
 }
 //----------------------------------------------------------------------------
 //Set_Neutral
 //----------------------------------------------------------------------------
 void Set_Neutral(void)
 {
-
+	/*
+	If SS is OFF
+			Set Servo_PW to SERVO_CENTER_PW
+			Set Motor_PW to MOTOR_NEUTRAL_PW
+			Wait while (SS is OFF)
+	*/
 }
-//----------------------------------------------------------------------------
-//Print_Data
-//----------------------------------------------------------------------------
+
 void Print_Data(void)
 {
 	/*
+	Once the desired heading and gains are
+	selected, the LCD should display the current heading, the current range and optionally the battery 
+	voltage. Updating the display every 400 ms or longer is reasonable. Updating more frequently is not
+	needed and should be avoided.
 	
-	Tabulate the data from the compass heading error & servo motor PW value, and
+	Tabulate the data from the compass heading error & servo PW & motor PW value & time, and
 	transmit it to the SecureCRT terminal for filing and later plotting
-
-	If readCount > 25
-			Set readCount to 0
-			print heading_error and Motor_PW
 	*/
+	if(r_count%20)
+	{
+		time+=.4;
+		r_counts=0;
+		printf("\n%c,%c,%c", time, heading_error, Servo_PW, Motor_PW);
+		lcd_clear();
+		lcd_print("Heading is: %c\n", current_heading);
+		lcd_print("Range is %c\n", range);
+	}
 }
 //LOW LEVEL FUNCTIONS
 //----------------------------------------------------------------------------
@@ -231,14 +246,28 @@ void Print_Data(void)
 //----------------------------------------------------------------------------
 void Read_Compass(void)
 {
-
+	/*
+	If r_count mod 2
+			i2c_read_data(COMPASS_ADDR, 2, Data, 2)
+			Set current heading to Data with bit shifting
+			Increment readCount
+	*/
 }
 //----------------------------------------------------------------------------
 //Read_Ranger
 //----------------------------------------------------------------------------
 void Read_Ranger(void)
 {
-
+    if (!r_count % 4)
+        //trigger every 80 ms
+    {
+        r_count = 0;
+        i2c_read_data(RANGER_ADDR, 2, Data, 2);
+        range = (unsigned int) Data[0] << 8 + (unsigned int) Data[1];
+        //overwrites prev data and updates range
+        Data[0] = PING_CM;
+        i2c_write_data (RANGER_ADDR, 0, Data, 1 );
+    }
 }
 //----------------------------------------------------------------------------
 //Set_Servo_PWM
@@ -252,8 +281,21 @@ void Set_Servo_PWM(void)
 //----------------------------------------------------------------------------
 void Set_Motor_PWM(void)
 {
+    if ( range <= 50 )
+        //detected something at/closer than 50, stop
+    {
+        MOTOR_PW = MOTOR_NEUTRAL_PW;
+    }
+    else
+        //nothing found too close, drive
+    {
+        MOTOR_PW = MOTOR_NEUTRAL_PW + ((float)(range-50)/(90-50))*(MOTOR_FORWARD_PW - MOTOR_NEUTRAL_PW);
+    }
 
+    printf("Motor PW: %u\r\n", MOTOR_PW);
+    PCA0CP2 = 0xFFFF - MOTOR_PW;
 }
+
 //----------------------------------------------------------------------------
 //Pause
 //----------------------------------------------------------------------------
