@@ -25,8 +25,8 @@ declare constants
 declare global variables
 	__sbit __at 0xB7 SS
 
-	unsigned int PCA_overflows, desired_heading, initial_speed, Servo_PW, Motor_PW
-	unsigned char nestedCount, printCount, compassFlag, rangerFlag, keyboard, keypad
+	unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, Servo_PW, Motor_PW
+	unsigned char nestedCount, readCount, compassFlag, rangerFlag, keyboard, keypad
 	unsigned char Data[2]
 	
 
@@ -42,6 +42,7 @@ function prototypes
 	High Level Functions
 		void Set_Motion(void);
 		void Set_Neutral(void);
+		void Print_Data(void);
 		void Car_Parameters(void);
 	
 	Low Level Functions
@@ -70,6 +71,7 @@ main function
 	Begin infinite loop
 		Set_Motion();
 		Set_Neutral();
+		Print_Data();
 	End infinite loop
 End main function
 
@@ -132,6 +134,12 @@ Functions
 		Set_Motor_PWM()
 	End Set_Motion
 	
+	Print_Data
+		If readCount > 25
+			Set readCount to 0
+			print heading_error and Motor_PW
+	End Print_Data
+	
 	Car_Parameters
 		Set Servo_PW to SERVO_CENTER_PW
 		Set Motor_PW to MOTOR_NEUTRAL_PW
@@ -142,7 +150,7 @@ Functions
 			Pause()
 			If keypad is '5'
 				break
-			if Keyboard is 'a'
+			if keyboard is 'a'
 				break
 			If keypad is not 0xFF
 				print out selected keypad direction and ask for confirmation of direction
@@ -162,6 +170,9 @@ Functions
 	Read_Compass
 		If compassFlag is raised
 			lower compassFlag
+			i2c_read_data(COMPASS_ADDR, 2, Data, 2)
+			Set current heading to Data with bit shifting
+			Increment readCount
 	End Read_Compass
 	
 	Read_Ranger
