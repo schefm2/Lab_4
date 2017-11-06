@@ -10,6 +10,7 @@ declare constants
 
 	#define RANGER_ADDR 0xE0
 	#define COMPASS_ADDR 0xC0
+	#define PING_CM 0x51
 
 	#define PCA_START 28672
 
@@ -25,7 +26,7 @@ declare constants
 declare global variables
 	__sbit __at 0xB7 SS
 
-	unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, Servo_PW, Motor_PW
+	unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW
 	unsigned char nestedCount, readCount, compassFlag, rangerFlag, keyboard, keypad
 	unsigned char Data[2]
 	
@@ -178,10 +179,15 @@ Functions
 	Read_Ranger
 		If rangerFlag is raised
 			lower rangerFlag
+			i2c_read_data(RANGER_ADDR, 2, Data, 2)
+			Set range to Data with bit shifting
+			Set Data[0] to PING_CM
+			i2c_write_data (RANGER_ADDR, 0, Data, 1)
+			Set Data to 0
 	End Read_Ranger
 	
 	Set_Servo_PWM
-	
+		
 	End Set_Servo_PWM
 	
 	Set_Motor_PWM
