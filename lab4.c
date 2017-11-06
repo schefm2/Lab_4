@@ -54,7 +54,6 @@ unsigned int PCA_overflows, desired_heading, current_heading, heading_error, ini
 unsigned char r_count, r_check, keyboard, keypad;
 float time;
 
-
 //sbits
 __sbit __at 0xB7 SS; //Port 3.5 slideswitch run/stop
 __sbit __at 0x97 POT; //Port 1.7 potentiometer
@@ -86,7 +85,9 @@ void main(void)
 	End infinite loop
 */
 }
+
 //HIGH LEVEL FUNCTIONS
+
 //----------------------------------------------------------------------------
 //Car_Parameters
 //----------------------------------------------------------------------------
@@ -196,6 +197,7 @@ void Car_Parameters(void)
 	}
 	
 }
+
 //----------------------------------------------------------------------------
 //Set_Motion
 //----------------------------------------------------------------------------
@@ -206,6 +208,7 @@ void Set_Motion(void)
 	Set_Servo_PWM();
 	Set_Motor_PWM();
 }
+
 //----------------------------------------------------------------------------
 //Set_Neutral
 //----------------------------------------------------------------------------
@@ -219,6 +222,9 @@ void Set_Neutral(void)
 	*/
 }
 
+//----------------------------------------------------------------------------
+//Print_Data
+//----------------------------------------------------------------------------
 void Print_Data(void)
 {
 	/*
@@ -240,19 +246,19 @@ void Print_Data(void)
 		lcd_print("Range is %c\n", range);
 	}
 }
+
 //LOW LEVEL FUNCTIONS
+
 //----------------------------------------------------------------------------
 //Read_Compass
 //----------------------------------------------------------------------------
 void Read_Compass(void)
 {
-	/*
-	If r_count mod 2
-			i2c_read_data(COMPASS_ADDR, 2, Data, 2)
-			Set current heading to Data with bit shifting
-			Increment readCount
-	*/
+	i2c_read_data(COMPASS_ADDR, 2, Data, 2);	//Read two byte, starting at reg 2
+	current_heading =(((unsigned int)Data[0] << 8) | Data[1]); //combine the two values
+	//heading has units of 1/10 of a degree
 }
+
 //----------------------------------------------------------------------------
 //Read_Ranger
 //----------------------------------------------------------------------------
@@ -269,13 +275,41 @@ void Read_Ranger(void)
         i2c_write_data (RANGER_ADDR, 0, Data, 1 );
     }
 }
+
 //----------------------------------------------------------------------------
 //Set_Servo_PWM
 //----------------------------------------------------------------------------
 void Set_Servo_PWM(void)
 {
+	heading_error = (signed int) desired_heading - current_heading;
+    //Should allow error values between 3599 and -3599
 
+	//If error greater than abs(180) degrees, then error is set to explementary angle of original error
+    /*
+	if (error > 1800)
+		error = error - 3599;
+	if (error < -1800)
+		error = 3599 + error;
+    */
+    heading_error = (heading_error > 1800) ? (heading_error - 3599) : heading_error;
+    heading_error = (heading_error < -1800) ? (heading_error + 3599) : heading_error;
+
+	SERVO_PW = .416666*(heading_error) + SERVO_CENTER_PW;		//Limits the change from PW_CENTER to 750
+
+	//Additional precaution: if SERVO_PW somehow exceeds the limits set in Lab 3-1,
+	//then SERVO_PW is set to corresponding endpoint of PW range [PW_LEFT, PW_RIGHT]
+    /*
+	if (SERVO_PW > PW_RIGHT)
+		SERVO_PW = PW_RIGHT;
+	if (SERVO_PW < PW_LEFT)
+		SERVO_PW = PW_LEFT;
+    */
+    SERVO_PW = (SERVO_PW > SERVO_RIGHT_PW) ? SERVO_RIGHT_PW : SERVO_PW;
+    SERVO_PW = (SERVO_PW < SERVO_LEFT_PW) ? SERVO_LEFT_PW : SERVO_PW;
+
+	PCA0CP0 = 0xFFFF - SERVO_PW;
 }
+
 //----------------------------------------------------------------------------
 //Set_Motor_PWM
 //----------------------------------------------------------------------------
@@ -291,8 +325,6 @@ void Set_Motor_PWM(void)
     {
         MOTOR_PW = MOTOR_NEUTRAL_PW + ((float)(range-50)/(90-50))*(MOTOR_FORWARD_PW - MOTOR_NEUTRAL_PW);
     }
-
-    printf("Motor PW: %u\r\n", MOTOR_PW);
     PCA0CP2 = 0xFFFF - MOTOR_PW;
 }
 
@@ -303,6 +335,7 @@ void Pause(void)
 {
 
 }
+
 //----------------------------------------------------------------------------
 //ADC_Init
 //----------------------------------------------------------------------------
@@ -319,6 +352,7 @@ void ADC_Init(void)
 	ADC1CF |= 0x01;
 	ADC1CF &= 0xFD;
 }
+
 //-----------------------------------------------------------------------------
 //Port_Init
 //-----------------------------------------------------------------------------
@@ -328,6 +362,7 @@ void Port_Init()
 	P3MDOUT &= 0x20; //Pin 3.5 open drain
 	P3 |= 0x20; //Pin 3.5 high impedance
 }
+
 //-----------------------------------------------------------------------------
 // Interrupt_Init
 //-----------------------------------------------------------------------------
@@ -340,6 +375,7 @@ void Interrupt_Init(void)
 	EA=1;
 	EIE1 |= 0x08;
 }
+
 //-----------------------------------------------------------------------------
 // XBR0_Init
 //-----------------------------------------------------------------------------
@@ -351,6 +387,7 @@ void XBR0_Init(void)
 	XBR0 = 0x27; //configure crossbar with UART, SPI, SMBus, and CEX channels as
 	// in worksheet
 }
+
 //-----------------------------------------------------------------------------
 // PCA_Init
 //-----------------------------------------------------------------------------
@@ -365,6 +402,7 @@ void PCA_Init(void)
 	PCA0CPM3 = 0xC2;
 	PCA0CN = 0x40; //Enable PCA counter
 }
+
 //-----------------------------------------------------------------------------
 // PCA_ISR
 //-----------------------------------------------------------------------------
@@ -382,6 +420,7 @@ void PCA_ISR ( void ) __interrupt 9
 	PCA0CN &= 0x40; //Handle other interupt sources
 // reference to the sample code in Example 4.5 -Pulse Width Modulation implemented using
 }
+
 //-----------------------------------------------------------------------------
 // SMB_Init
 //-----------------------------------------------------------------------------
