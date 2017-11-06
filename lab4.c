@@ -50,8 +50,9 @@ unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
 unsigned char r_count=0;
 unsigned char r_check=0;
-unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW
-unsigned char nestedCount, readCount, compassFlag, rangerFlag, keyboard, keypad
+unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW;
+unsigned char r_count, r_check, keyboard, keypad;
+float time;
 
 
 //sbits
@@ -83,28 +84,7 @@ void main(void)
 		Set_Neutral();
 		Print_Data();
 	End infinite loop
-
-	a main function that calls a read_compass()
-	function and sets the PWM for the steering servo based on the present heading and a desired
-	compass heading. 
-
-	The main code also calls a ranger function and adjusts the desired heading
-	and/or drive motor based on SecureCRT inputs when the measurement from the ultrasonic
-	sensor to an obstacle is less than a set value. 
-
-	
-
-	Display relevant values or messages on the LCD display. Once the desired heading and gains are
-	selected, the LCD should display the current heading, the current range and optionally the battery 
-	voltage. Updating the display every 400 ms or longer is reasonable. Updating more frequently is not
-	needed and should be avoided.
-
-
-
-	Tabulate the data from the compass heading error & servo motor PW value, and
-	transmit it to the SecureCRT terminal for filing and later plotting
 */
-
 }
 //HIGH LEVEL FUNCTIONS
 //----------------------------------------------------------------------------
@@ -173,20 +153,27 @@ void Set_Neutral(void)
 			Wait while (SS is OFF)
 	*/
 }
-//----------------------------------------------------------------------------
-//Print_Data
-//----------------------------------------------------------------------------
+
 void Print_Data(void)
 {
 	/*
+	Once the desired heading and gains are
+	selected, the LCD should display the current heading, the current range and optionally the battery 
+	voltage. Updating the display every 400 ms or longer is reasonable. Updating more frequently is not
+	needed and should be avoided.
 	
-	Tabulate the data from the compass heading error & servo motor PW value, and
+	Tabulate the data from the compass heading error & servo PW & motor PW value & time, and
 	transmit it to the SecureCRT terminal for filing and later plotting
-
-	If readCount > 25
-			Set readCount to 0
-			print heading_error and Motor_PW
 	*/
+	if(r_count%20)
+	{
+		time+=.4;
+		r_counts=0;
+		printf("\n%c,%c,%c", time, heading_error, Servo_PW, Motor_PW);
+		lcd_clear();
+		lcd_print("Heading is: %c\n", current_heading);
+		lcd_print("Range is %c\n", range);
+	}
 }
 //LOW LEVEL FUNCTIONS
 //----------------------------------------------------------------------------
@@ -208,12 +195,11 @@ void Read_Ranger(void)
 {
 	/*
 	If r_count mod 4
-			r_count=0
-			i2c_read_data(RANGER_ADDR, 2, Data, 2)
-			Set range to Data with bit shifting
-			Set Data[0] to PING_CM
-			i2c_write_data (RANGER_ADDR, 0, Data, 1)
-			Set Data to 0
+		i2c_read_data(RANGER_ADDR, 2, Data, 2)
+		Set range to Data with bit shifting
+		Set Data[0] to PING_CM
+		i2c_write_data (RANGER_ADDR, 0, Data, 1)
+		Set Data to 0
 	*/
 }
 //----------------------------------------------------------------------------
