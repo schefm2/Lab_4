@@ -135,35 +135,28 @@ Functions
 	Car_Parameters
 		Set Servo_PW to SERVO_CENTER_PW
 		Set Motor_PW to MOTOR_NEUTRAL_PW
-		Print instructions to select heading with keypad or computer keyboard
-		Set keyboard to getchar()
-		If keyboard is 'a'
-			Print cardinal directions and instructions for selecting one
-			Begin infinite loop
-				Set keypad to read_keypad()
-				Pause()
-				If keypad is not 0xFF
-					break
-			End infinite loop
-			If keypad is '2'
-				Set desired_heading to 0
-			If keypad is '6'
-				Set desired_heading to 900
-			If keypad is '8'
-				Set desired_heading to 1800
-			If keypad is '4'
-				Set desired_heading to 2700
-		If keyboard is 'l'
-			Print cardinal directions and instructions for selecting one
-			Set keyboard to getchar()
-			If keyboard is 'n'
-				Set desired_heading to 0
-			If keyboard is 'e'
-				Set desired_heading to 900
-			If keyboard is 's'
-				Set desired_heading to 1800
-			If keyboard is 'w'
-				Set desired_heading to 2700
+		Print instructions to select cardinal direction with keypad or computer keyboard
+		Begin infinite loop
+			Set keyboard to getchar_nw()
+			Set keypad to read_keypad()
+			Pause()
+			If keypad is '5'
+				break
+			if Keyboard is 'a'
+				break
+			If keypad is not 0xFF
+				print out selected keypad direction and ask for confirmation of direction
+			If keyboard is not 0xFF
+				print out selected keyboard direction and ask for confirmation of direction
+		End infinite loop
+		If keypad is '2' OR keyboard is 'n'
+			Set desired_heading to 0
+		If keypad is '6' OR keyboard is 'e'
+			Set desired_heading to 900
+		If keypad is '8' OR keyboard is 's'
+			Set desired_heading to 1800
+		If keypad is '4' OR keyboard is 'w'
+			Set desired_heading to 2700
 	End Car_Parameters
 	
 	Read_Compass
