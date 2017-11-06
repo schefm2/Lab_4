@@ -206,15 +206,16 @@ void Read_Compass(void)
 //----------------------------------------------------------------------------
 void Read_Ranger(void)
 {
-	/*
-	If r_count mod 4
-			r_count=0
-			i2c_read_data(RANGER_ADDR, 2, Data, 2)
-			Set range to Data with bit shifting
-			Set Data[0] to PING_CM
-			i2c_write_data (RANGER_ADDR, 0, Data, 1)
-			Set Data to 0
-	*/
+    if (!r_count % 4)
+        //trigger every 80 ms
+    {
+        r_count = 0;
+        i2c_read_data(RANGER_ADDR, 2, Data, 2);
+        range = (unsigned int) Data[0] << 8 + (unsigned int) Data[1];
+        //overwrites prev data and updates range
+        Data[0] = PING_CM;
+        i2c_write_data (RANGER_ADDR, 0, Data, 1 );
+    }
 }
 //----------------------------------------------------------------------------
 //Set_Servo_PWM
@@ -228,8 +229,21 @@ void Set_Servo_PWM(void)
 //----------------------------------------------------------------------------
 void Set_Motor_PWM(void)
 {
+    if ( range <= 50 )
+        //detected something at/closer than 50, stop
+    {
+        MOTOR_PW = MOTOR_NEUTRAL_PW;
+    }
+    else
+        //nothing found too close, drive
+    {
+        MOTOR_PW = MOTOR_NEUTRAL_PW + ((float)(range-50)/(90-50))*(MOTOR_FORWARD_PW - MOTOR_NEUTRAL_PW);
+    }
 
+    printf("Motor PW: %u\r\n", MOTOR_PW);
+    PCA0CP2 = 0xFFFF - MOTOR_PW;
 }
+
 //----------------------------------------------------------------------------
 //Pause
 //----------------------------------------------------------------------------
