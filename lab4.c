@@ -4,6 +4,23 @@
 #include <c8051_SDCC.h>
 #include <i2c.h>
 
+#define ON 1
+#define OFF 0
+
+#define RANGER_ADDR 0xE0
+#define COMPASS_ADDR 0xC0
+#define PING_CM 0x51
+
+#define PCA_START 28672
+
+#define SERVO_LEFT_PW 2395
+#define SERVO_CENTER_PW 2825
+#define SERVO_RIGHT_PW 3185
+
+#define MOTOR_REVERSE_PW 2027 
+#define MOTOR_NEUTRAL_PW 2765
+#define MOTOR_FORWARD_PW 3502
+
 //-----------------------------------------------------------------------------
 // 8051 Initialization Functions
 //-----------------------------------------------------------------------------
@@ -33,6 +50,9 @@ unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
 unsigned char r_count=0;
 unsigned char r_check=0;
+unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW
+unsigned char nestedCount, readCount, compassFlag, rangerFlag, keyboard, keypad
+
 
 //sbits
 __sbit __at 0xB7 SS; //Port 3.5 slideswitch run/stop
@@ -136,14 +156,22 @@ void Car_Parameters(void)
 //----------------------------------------------------------------------------
 void Set_Motion(void)
 {
-
+	Read_Compass();
+	Read_Ranger();
+	Set_Servo_PWM();
+	Set_Motor_PWM();
 }
 //----------------------------------------------------------------------------
 //Set_Neutral
 //----------------------------------------------------------------------------
 void Set_Neutral(void)
 {
-
+	/*
+	If SS is OFF
+			Set Servo_PW to SERVO_CENTER_PW
+			Set Motor_PW to MOTOR_NEUTRAL_PW
+			Wait while (SS is OFF)
+	*/
 }
 //----------------------------------------------------------------------------
 //Print_Data
@@ -166,14 +194,27 @@ void Print_Data(void)
 //----------------------------------------------------------------------------
 void Read_Compass(void)
 {
-
+	/*
+	If r_count mod 2
+			i2c_read_data(COMPASS_ADDR, 2, Data, 2)
+			Set current heading to Data with bit shifting
+			Increment readCount
+	*/
 }
 //----------------------------------------------------------------------------
 //Read_Ranger
 //----------------------------------------------------------------------------
 void Read_Ranger(void)
 {
-
+	/*
+	If r_count mod 4
+			r_count=0
+			i2c_read_data(RANGER_ADDR, 2, Data, 2)
+			Set range to Data with bit shifting
+			Set Data[0] to PING_CM
+			i2c_write_data (RANGER_ADDR, 0, Data, 1)
+			Set Data to 0
+	*/
 }
 //----------------------------------------------------------------------------
 //Set_Servo_PWM
