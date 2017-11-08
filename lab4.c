@@ -166,6 +166,13 @@ void Set_Neutral(void)
 			Set Motor_PW to MOTOR_NEUTRAL_PW
 			Wait while (SS is OFF)
 	*/
+    if (SS)
+    {
+        SERVO_PW = SERVO_CENTER_PW;
+        MOTOR_PW = MOTOR_NEUTRAL_PW;
+        while(SS) {}
+        //wait until !SS
+    }
 }
 
 //----------------------------------------------------------------------------
