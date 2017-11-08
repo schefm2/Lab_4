@@ -160,12 +160,6 @@ void Set_Motion(void)
 //----------------------------------------------------------------------------
 void Set_Neutral(void)
 {
-	/*
-	If SS is OFF
-			Set Servo_PW to SERVO_CENTER_PW
-			Set Motor_PW to MOTOR_NEUTRAL_PW
-			Wait while (SS is OFF)
-	*/
     if (SS)
     {
         SERVO_PW = SERVO_CENTER_PW;
