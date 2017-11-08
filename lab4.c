@@ -39,6 +39,9 @@ void Read_Ranger(void);
 void Set_Servo_PWM(void);
 void Set_Motor_PWM(void);
 void Pause(void);
+void Wait(void);
+unsigned int pow(unsigned int a, unsigned char b);
+unsigned int parallel_input(void);
 
 
 void Car_Parameters(void);
@@ -48,10 +51,10 @@ void Print_Data(void);
 
 unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
-unsigned char r_count=0;
+unsigned int r_count=0;
 unsigned char r_check=0;
 unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW;
-unsigned char r_count, r_check, keyboard, keypad;
+unsigned char r_check, keyboard, keypad;
 float time;
 
 //sbits
@@ -72,6 +75,8 @@ void main(void)
 	PCA_Init();
 	SMB_Init();
 	ADC_Init();
+	
+	Car_Parameters();
 /*
 	Set PCA_overflows to 0
 	Wait while PCA_overflows < 50
@@ -106,96 +111,37 @@ void Car_Parameters(void)
 	final value must be displayed for the user to see, and allowing the user to make adjustments until
 	a desired value is set is a nice feature.
 	*/
-	unsigned char isPress = 0;
-	unsigned char pressCheck = 0;
-	unsigned int finalValue = 0;
-
 	Servo_PW = SERVO_CENTER_PW;		//Initialize car to straight steering and no movement
 	Motor_PW = MOTOR_NEUTRAL_PW;
+	PCA0CP0 = 0xFFFF - Servo_PW;
+	PCA0CP2 = 0xFFFF - Motor_PW;
+
+	
+	printf("\nStart");
+	
+	Wait();
+    lcd_clear();
+    lcd_print("Calibration:\nHello world!\n012_345_678:\nabc def ghij");
+	Wait();
 	
 	lcd_clear();
-	lcd_print("Compass direction\nWith even keys.");
-	printf("Please select a cardinal direction. North is 8, East is 6, South is 2, West is 4.\r\n");
-	while (1)
-	{
-		keyboard = getchar_nw();	//Equal to 0xFF when no key is pressed
-		keypad = read_keypad();		//Equal to 0xFF when no key is pressed
-		Pause();	//Pauses program to prevent rapid consecutive keypad reads
-		
-		if (keypad == '5' || keyboard == '5')	//5 key is used as the "enter" key
-		{
-			isPress = 0;
-			break;
-		}
-		
-		if (isPress == 1 && keypad == 0xFF && keyboard == 0xFF)	//When a key was previously held down but is currently released
-			isPress = 0;
-		
-		if (keypad != 0xFF && isPress == 0)	//Checks to see if a key is currently pressed and no key is held down
-		{
-			isPress = 1;	//Sets isPress high when a key is held down
-			finalValue = keypad;
-			lcd_clear();
-			lcd_print("You select %c\nIf sure press 5", keypad);
-		}
-		
-		if (keyboard != 0xFF && isPress == 0)	//Checks to see if a key is currently pressed and no key is held down
-		{
-			isPress = 1;	//Sets isPress high when a key is held down
-			finalValue = keyboard;
-			printf("You selected %c as your desired heading. Press 5 to confirm.\r\n", keyboard);
-		}
-	}
-	if (finalValue == '8')
-		desired_heading = 0;	//Sets heading to North
-	if (finalValue == '6')
-		desired_heading = 900;	//Sets heading to East
-	if (finalValue == '2')
-		desired_heading = 1800;	//Sets heading to South
-	if (finalValue == '4')
-		desired_heading = 2700;	//Sets heading to West
-	printf("Your desired heading has been set to %d\r\n", desired_heading);
+	lcd_print("Press 5 keys.\n");
+	printf("\r\nSelect a desired heading (0 to 3599) by inputing 5 digits. Lead with a 0. Press # to confirm.\r\n");
+	desired_heading = parallel_input();
+	printf("\r\nYou selected %d as your heading", desired_heading);
+	Wait();
+	
 	lcd_clear();
-	lcd_print("You Selected %d\nFor heading", desired_heading);
+	lcd_print("Press 5 keys.\n");
+	printf("\r\nSelect an initial speed (2027 to 3502) by inputing 5 digits. Lead with a 0. Press # to confirm.\r\n");
+	initial_speed = parallel_input();
+	printf("\r\nYou selected %d as your speed", initial_speed);
+	Wait();
+	PCA0CP0 = 0xFFFF - 0;
+	PCA0CP2 = 0xFFFF - initial_speed;
+	printf("\r\nEnd of test\r\n");
 	
-	
-	printf("Set initial speed by keying in 4 numbers.\r\n");
-	lcd_clear();
-	lcd_print("Key 4 nums for \ninitial speed\n");
-	while(1)
-	{
-		keyboard = getchar_nw();	//Equal to 0xFF when no key is pressed
-		keypad = read_keypad();		//Equal to 0xFF when no key is pressed
-		Pause();	//Pauses program to prevent rapid consecutive keypad reads
-		
-		if (isPress > pressCheck && keypad == 0xFF && keyboard == 0xFF)
-			pressCheck++;
-		
-		if (pressCheck == 4)
-		{
-			printf("\r\nYou have selected a speed of %d. Press * to enter", finalValue);
-			lcd_clear();
-			lcd_print("Speed is %d\nPress # confirm");
-			isPress = pressCheck = 0;
-		}
-		
-		if (keypad == '#' || keyboard == '#')
-			break;
-		
-		if (keypad != 0xFF && isPress == pressCheck)
-		{
-			lcd_print("%c",keypad)
-			finalValue = finalValue + (unsigned int)keypad * 10^isPress;
-			isPress++;
-		}
-		if (keyboard != 0xFF && isPress == pressCheck)
-		{
-			printf("%c", keyboard);
-			finalValue = finalValue + (unsigned int)keyboard * 10^isPress;
-			isPress++;
-		}
-	}
-	
+	while(1);
 }
 
 //----------------------------------------------------------------------------
@@ -239,7 +185,7 @@ void Print_Data(void)
 	if(r_count%20)
 	{
 		time+=.4;
-		r_counts=0;
+		r_count=0;
 		printf("\n%c,%c,%c", time, heading_error, Servo_PW, Motor_PW);
 		lcd_clear();
 		lcd_print("Heading is: %c\n", current_heading);
@@ -294,7 +240,7 @@ void Set_Servo_PWM(void)
     heading_error = (heading_error > 1800) ? (heading_error - 3599) : heading_error;
     heading_error = (heading_error < -1800) ? (heading_error + 3599) : heading_error;
 
-	SERVO_PW = .416666*(heading_error) + SERVO_CENTER_PW;		//Limits the change from PW_CENTER to 750
+	Servo_PW = .416666*(heading_error) + SERVO_CENTER_PW;		//Limits the change from PW_CENTER to 750
 
 	//Additional precaution: if SERVO_PW somehow exceeds the limits set in Lab 3-1,
 	//then SERVO_PW is set to corresponding endpoint of PW range [PW_LEFT, PW_RIGHT]
@@ -304,10 +250,10 @@ void Set_Servo_PWM(void)
 	if (SERVO_PW < PW_LEFT)
 		SERVO_PW = PW_LEFT;
     */
-    SERVO_PW = (SERVO_PW > SERVO_RIGHT_PW) ? SERVO_RIGHT_PW : SERVO_PW;
-    SERVO_PW = (SERVO_PW < SERVO_LEFT_PW) ? SERVO_LEFT_PW : SERVO_PW;
+    Servo_PW = (Servo_PW > SERVO_RIGHT_PW) ? SERVO_RIGHT_PW : Servo_PW;
+    Servo_PW = (Servo_PW < SERVO_LEFT_PW) ? SERVO_LEFT_PW : Servo_PW;
 
-	PCA0CP0 = 0xFFFF - SERVO_PW;
+	PCA0CP0 = 0xFFFF - Servo_PW;
 }
 
 //----------------------------------------------------------------------------
@@ -318,14 +264,14 @@ void Set_Motor_PWM(void)
     if ( range <= 50 )
         //detected something at/closer than 50, stop
     {
-        MOTOR_PW = MOTOR_NEUTRAL_PW;
+        Motor_PW = MOTOR_NEUTRAL_PW;
     }
     else
         //nothing found too close, drive
     {
-        MOTOR_PW = MOTOR_NEUTRAL_PW + ((float)(range-50)/(90-50))*(MOTOR_FORWARD_PW - MOTOR_NEUTRAL_PW);
+        Motor_PW = MOTOR_NEUTRAL_PW + ((float)(range-50)/(90-50))*(MOTOR_FORWARD_PW - MOTOR_NEUTRAL_PW);
     }
-    PCA0CP2 = 0xFFFF - MOTOR_PW;
+    PCA0CP2 = 0xFFFF - Motor_PW;
 }
 
 //----------------------------------------------------------------------------
@@ -333,7 +279,85 @@ void Set_Motor_PWM(void)
 //----------------------------------------------------------------------------
 void Pause(void)
 {
+	r_count = 0;
+	while (r_count < 2);
+}
 
+//----------------------------------------------------------------------------
+//Wait
+//----------------------------------------------------------------------------
+void Wait(void)
+{
+	r_count = 0;
+	while (r_count < 50);
+}
+
+//----------------------------------------------------------------------------
+//Pow
+//----------------------------------------------------------------------------
+unsigned int pow(unsigned int a, unsigned char b)
+{
+	unsigned char i;
+	unsigned char base = a;
+
+	if (b == 0) return 1;
+	for(i = 1; i < b; i++)
+		a = a*base;
+	return a;
+}
+
+//----------------------------------------------------------------------------
+//parallel_input
+//----------------------------------------------------------------------------
+unsigned int parallel_input(void)
+{
+	unsigned char keypad;
+	unsigned char keyboard;
+	unsigned char isPress = 0;
+	unsigned char pressCheck = 0;
+	unsigned int value = 0;
+	
+	while(1)
+	{
+		keyboard = getchar_nw();	//This constantly sets keyboard to whatever char is in the terminal
+		keypad = read_keypad();		//This constantly sets the keypad to whatever char is on the LCD
+		Pause();					//Pause necessary to prevent overreading the keypad
+		
+		if (keyboard == '#' || keypad == '#') //# is a confirm key, so it will finish parallel_input()
+			return value;
+		
+		if (isPress > pressCheck && keypad == 0xFF && keyboard == 0xFF)	//Only increments pressCheck if held key is released
+			pressCheck++;
+		
+
+		if (pressCheck == 6)	//If a 6th key is pressed, then released
+		{
+			isPress = pressCheck = 0;	//Reset the flags
+			value = 0;	//Reset return value
+			lcd_print("\b\b\b\b\b\b");	//Clear value displayed on LCD, needs an extra \b for some reason?
+			printf("\r      \r");	//Clear value displayed on terminal
+			
+		}
+
+		
+		if (isPress == pressCheck)	//pressCheck must be equal to isPress, only occurs if no key is held down
+		{
+			if (keypad != 0xFF)		//When an actual key is held down
+			{
+				lcd_print("%c",keypad);	//Adds pressed key to LCD screen
+				printf("%c", keypad);	//Adds pressed key to computer terminal
+				value = value + ((unsigned int)(keypad - '0')) * pow(10,4 - isPress);	//Essentially takes each pressed key and multiples by some power of 10
+				isPress++;
+			}
+			if (keyboard != 0xFF)	//When an actual key is held down
+			{
+				lcd_print("%c",keyboard);	//Adds pressed key to LCD screen
+				//printf("%c", keyboard); this line is not necessary as getchar_nw automatically executes a putchar()
+				value = value + ((unsigned int)(keyboard - '0')) * pow(10,4 - isPress);	//Essentially takes each pressed key and multiples by some power of 10
+				isPress++;	
+			}
+		}
+	}
 }
 
 //----------------------------------------------------------------------------
@@ -346,7 +370,7 @@ void ADC_Init(void)
 
 	//Gives capacitors in A/D converter time to charge
 	r_check=r_count; //makes sure r_count isn't altered while waiting 
-	while(r_count=<(r_check+2));
+	while(r_count<=(r_check+2));
 
 	//Sets gain to 1
 	ADC1CF |= 0x01;
@@ -358,7 +382,7 @@ void ADC_Init(void)
 //-----------------------------------------------------------------------------
 void Port_Init()
 {
-	P1MDOUT |= 0x03;//set output pin for CEX2 in push-pull mode
+	P1MDOUT |= 0x05;//set output pin for CEX0 and CEX2 in push-pull mode
 	P3MDOUT &= 0x20; //Pin 3.5 open drain
 	P3 |= 0x20; //Pin 3.5 high impedance
 }
@@ -399,7 +423,7 @@ void PCA_Init(void)
 	// reference to the sample code in Example 4.5 - Pulse Width Modulation implemented using
 	// Use a 16 bit counter with SYSCLK/12.
 	PCA0MD = 0x81;
-	PCA0CPM3 = 0xC2;
+	PCA0CPM0 = PCA0CPM2 = 0xC2;		//Sets both CCM0 and CCM2 in 16-bit compare mode, enables PWM
 	PCA0CN = 0x40; //Enable PCA counter
 }
 
@@ -433,3 +457,6 @@ void SMB_Init()
 	ENSMB = 1;		//Enables SMB
 }
 //-----------------------------------------------------------------------------
+
+
+
