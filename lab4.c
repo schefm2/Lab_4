@@ -90,12 +90,11 @@ void main(void)
 		Set_Neutral();
 		Print_Data();
 
-    	if (range <= 50)
+    	if ( range <= 50 )
         //detected something at/closer than 50, stop
     	{
         	Motor_PW = MOTOR_NEUTRAL_PW;
         	printf("Press 4 for left or 6 for right\n\r");
-
         	while(answer != '4' && answer != '6') {answer=parallel_input()};
         	
         	if(answer=='4')
@@ -114,6 +113,7 @@ void main(void)
         				Motor_PW = initial_speed;
         			}
         	}
+
 
     	}
 }
@@ -238,9 +238,13 @@ void Print_Data(void)
 //----------------------------------------------------------------------------
 void Read_Compass(void)
 {
+    if (!r_count%2)
+        //trigger every 40 ms
+{
 	i2c_read_data(COMPASS_ADDR, 2, Data, 2);	//Read two byte, starting at reg 2
 	current_heading =(((unsigned int)Data[0] << 8) | Data[1]); //combine the two values
 	//heading has units of 1/10 of a degree
+}
 }
 
 //----------------------------------------------------------------------------
@@ -411,7 +415,6 @@ unsigned char parallel_input(void)
 	}
 	
 }
-
 //----------------------------------------------------------------------------
 //read_AD_input
 //----------------------------------------------------------------------------
