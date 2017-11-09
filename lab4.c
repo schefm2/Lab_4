@@ -42,6 +42,7 @@ void Pause(void);
 void Wait(void);
 unsigned int pow(unsigned int a, unsigned char b);
 unsigned int calibrate(void);
+unsigned char parallel_input(void);
 unsigned char read_AD_input(unsigned char pin_number);
 
 
@@ -384,6 +385,27 @@ unsigned int calibrate(void)
 		}
 	}
 }
+//----------------------------------------------------------------------------
+//parallel_input
+//----------------------------------------------------------------------------
+unsigned char parallel_input(void)
+{
+	unsigned char keypad;
+	unsigned char keyboard;
+	while(1)
+	{
+		keyboard = getchar_nw();	//This constantly sets keyboard to whatever char is in the terminal
+		keypad = read_keypad();		//This constantly sets the keypad to whatever char is on the LCD
+		Pause();					//Pause necessary to prevent overreading the keypad
+		
+		if (keyboard != 0xFF)
+			return keyboard;
+		if (keypad != 0xFF)
+			return keypad;
+	}
+	
+}
+
 //----------------------------------------------------------------------------
 //read_AD_input
 //----------------------------------------------------------------------------
