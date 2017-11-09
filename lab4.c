@@ -103,7 +103,9 @@ void main(void)
         		while(getchar() != ' ') 
         			{
         				Servo_PW = SERVO_LEFT_PW;
+        				PCA0CP0 = 0xFFFF - Servo_PW;
         				Motor_PW = initial_speed;
+        				PCA0CP2 = 0xFFFF - Motor_PW;
         			}
         	}
         	if(answer=='6')
@@ -111,7 +113,9 @@ void main(void)
         		while(getchar() != ' ') 
         			{
         				Servo_PW = SERVO_RIGHT_PW;
+        				PCA0CP0 = 0xFFFF - Servo_PW;
         				Motor_PW = initial_speed;
+        				PCA0CP2 = 0xFFFF - Motor_PW;
         			}
         	}
 
