@@ -51,8 +51,7 @@ void Print_Data(void);
 
 unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
-unsigned int r_count=0;
-signed char r_check=0;
+signed int r_count=0;
 unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW;
 unsigned char r_check, keyboard, keypad;
 float time, gain;
@@ -87,6 +86,22 @@ void main(void)
 		Set_Motion();
 		Set_Neutral();
 		Print_Data();
+    	if ( range <= 50 )
+        //detected something at/closer than 50, stop
+    	{
+        	Motor_PW = MOTOR_NEUTRAL_PW;
+        	printf("Press 4 for left or 6 for right\n\r");
+        	answer = parallel_input();
+        	if(answer==4)
+        	{
+        		Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW;
+        	}
+        	if(answer==6)
+        	{
+        		Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW;
+        	}
+    	}
+    else
 
 }
 
@@ -261,12 +276,7 @@ void Set_Servo_PWM(void)
 //----------------------------------------------------------------------------
 void Set_Motor_PWM(void)
 {
-    if ( range <= 50 )
-        //detected something at/closer than 50, stop
-    {
-        Motor_PW = MOTOR_NEUTRAL_PW;
-    }
-    else
+	
         //nothing found too close, drive
     {
         Motor_PW = MOTOR_NEUTRAL_PW + ((float)(range-50)/(90-50))*(MOTOR_FORWARD_PW - MOTOR_NEUTRAL_PW);
@@ -369,8 +379,8 @@ void ADC_Init(void)
 	ADC1CN = 0x80;	//Enables AD/C converter
 
 	//Gives capacitors in A/D converter time to charge
-	r_check=(r_count-2); //makes sure r_count isn't altered while waiting 
-	while(r_count==r_check+2);
+	r_check=r_count; //makes sure r_count isn't altered while waiting 
+	while(r_count-3<r_check);
 
 	//Sets gain to 1
 	ADC1CF |= 0x01;
