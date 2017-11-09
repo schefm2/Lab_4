@@ -53,9 +53,8 @@ void Print_Data(void);
 
 unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
-signed int r_count=0;
 unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW;
-unsigned char r_check, keyboard, keypad;
+unsigned char r_check, keyboard, keypad, r_count;
 float time, gain;
 
 //sbits
@@ -91,24 +90,24 @@ void main(void)
 		Set_Neutral();
 		Print_Data();
 
-    	if ( range <= 50 )
+    	if (range <= 50)
         //detected something at/closer than 50, stop
     	{
         	Motor_PW = MOTOR_NEUTRAL_PW;
         	printf("Press 4 for left or 6 for right\n\r");
-        	answer = parallel_input();
-        	if(answer==4)
+
+        	while(answer != '4' && answer != '6') {answer=parallel_input()};
+        	
+        	if(answer=='4')
         	{
-        		Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW;
+        		while(getchar() != ' ') {Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW};
         	}
-        	if(answer==6)
+        	if(answer=='6')
         	{
-        		Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW;
+        		while(getchar() != ' ') {Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW};
         	}
+
     	}
-    else
-
-
 }
 
 //HIGH LEVEL FUNCTIONS
