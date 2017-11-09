@@ -52,7 +52,7 @@ void Print_Data(void);
 unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
 unsigned int r_count=0;
-unsigned char r_check=0;
+signed char r_check=0;
 unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW;
 unsigned char r_check, keyboard, keypad;
 float time;
@@ -77,18 +77,15 @@ void main(void)
 	ADC_Init();
 	
 	Car_Parameters();
-/*
-	Set PCA_overflows to 0
-	Wait while PCA_overflows < 50
+	r_count = 0;
+	while(r_count<3);
 	
 	Car_Parameters();
 	
-	Begin infinite loop
+	while(1)
 		Set_Motion();
 		Set_Neutral();
 		Print_Data();
-	End infinite loop
-*/
 }
 
 //HIGH LEVEL FUNCTIONS
@@ -370,8 +367,8 @@ void ADC_Init(void)
 	ADC1CN = 0x80;	//Enables AD/C converter
 
 	//Gives capacitors in A/D converter time to charge
-	r_check=r_count; //makes sure r_count isn't altered while waiting 
-	while(r_count<=(r_check+2));
+	r_check=(r_count-2); //makes sure r_count isn't altered while waiting 
+	while(r_count==r_check+2);
 
 	//Sets gain to 1
 	ADC1CF |= 0x01;
@@ -383,6 +380,7 @@ void ADC_Init(void)
 //-----------------------------------------------------------------------------
 void Port_Init()
 {
+	//Initailize POT
 	P1MDOUT |= 0x05;//set output pin for CEX0 and CEX2 in push-pull mode
 	P3MDOUT &= 0x20; //Pin 3.5 open drain
 	P3 |= 0x20; //Pin 3.5 high impedance
