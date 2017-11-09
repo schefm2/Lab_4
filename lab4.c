@@ -94,7 +94,7 @@ void main(void)
         //detected something at/closer than 50, stop
     	{
         	Motor_PW = MOTOR_NEUTRAL_PW;
-        	printf("Press 4 for left or 6 for right\n\r");
+        	printf("Press 4 for left or 6 for right.\n\rPress space to return to normal path.");
         	while(answer != '4' && answer != '6') {answer=parallel_input()};
         	
         	if(answer=='4')
