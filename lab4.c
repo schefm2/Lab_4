@@ -55,7 +55,7 @@ unsigned int r_count=0;
 signed char r_check=0;
 unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW;
 unsigned char r_check, keyboard, keypad;
-float time;
+float time, gain;
 
 //sbits
 __sbit __at 0xB7 SS; //Port 3.5 slideswitch run/stop
@@ -79,6 +79,7 @@ void main(void)
 	Car_Parameters();
 	r_count = 0;
 	while(r_count<3);
+	r_count = 0;
 	
 	Car_Parameters();
 	
@@ -86,6 +87,7 @@ void main(void)
 		Set_Motion();
 		Set_Neutral();
 		Print_Data();
+
 }
 
 //HIGH LEVEL FUNCTIONS
@@ -238,7 +240,7 @@ void Set_Servo_PWM(void)
     heading_error = (heading_error > 1800) ? (heading_error - 3599) : heading_error;
     heading_error = (heading_error < -1800) ? (heading_error + 3599) : heading_error;
 
-	Servo_PW = .416666*(heading_error) + SERVO_CENTER_PW;		//Limits the change from PW_CENTER to 750
+	Servo_PW = gain*(heading_error) + SERVO_CENTER_PW;		//Limits the change from PW_CENTER to 750
 
 	//Additional precaution: if SERVO_PW somehow exceeds the limits set in Lab 3-1,
 	//then SERVO_PW is set to corresponding endpoint of PW range [PW_LEFT, PW_RIGHT]
