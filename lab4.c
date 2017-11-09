@@ -100,13 +100,19 @@ void main(void)
         	
         	if(answer=='4')
         	{
-        		while(getchar() != ' ') {Servo_PW = SERVO_LEFT_PW};
-        		Motor_PW = initial_speed;
+        		while(getchar() != ' ') 
+        			{
+        				Servo_PW = SERVO_LEFT_PW;
+        				Motor_PW = initial_speed;
+        			}
         	}
         	if(answer=='6')
         	{
-        		while(getchar() != ' ') {Servo_PW = SERVO_RIGHT_PW};
-        		Motor_PW = initial_speed;
+        		while(getchar() != ' ') 
+        			{
+        				Servo_PW = SERVO_RIGHT_PW;
+        				Motor_PW = initial_speed;
+        			}
         	}
 
     	}
