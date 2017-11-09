@@ -4,8 +4,8 @@
 #include <c8051_SDCC.h>
 #include <i2c.h>
 
-#define ON 1
-#define OFF 0
+//#define ON 1
+//#define OFF 0
 
 #define RANGER_ADDR 0xE0
 #define COMPASS_ADDR 0xC0
@@ -53,12 +53,14 @@ void Print_Data(void);
 
 unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
-unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW;
-unsigned char r_check, keyboard, keypad, r_count;
+unsigned int desired_heading = 0;
+unsigned int initial_speed = 0;
+unsigned int PCA_overflows, current_heading, heading_error, range, Servo_PW, Motor_PW;
+unsigned char r_check, keyboard, keypad, r_count, answer;
 float time, gain;
 
 //sbits
-__sbit __at 0xB7 SS; //Port 3.5 slideswitch run/stop
+__sbit __at 0xB7 SS; //Port 3.7 slideswitch run/stop
 __sbit __at 0x97 POT; //Port 1.7 potentiometer
 
 //-----------------------------------------------------------------------------
@@ -80,14 +82,14 @@ void main(void)
 	r_count = 0;
 	while(r_count<3);
 	r_count = 0;
-	
-	Car_Parameters();
-	
+
 	while(1)
 	{
-		
+		printf("\r\nEntered the main while loop.");
 		Set_Motion();
+		printf("\r\nFinished Set_Motion.");
 		Set_Neutral();
+		printf("\r\nFinished Set_Neutral");
 		Print_Data();
 
     	if (range <= 50)
@@ -96,18 +98,19 @@ void main(void)
         	Motor_PW = MOTOR_NEUTRAL_PW;
         	printf("Press 4 for left or 6 for right\n\r");
 
-        	while(answer != '4' && answer != '6') {answer=parallel_input()};
+        	while(answer != '4' && answer != '6'){answer=parallel_input();}
         	
         	if(answer=='4')
         	{
-        		while(getchar() != ' ') {Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW};
+        		while(getchar() != ' ') {Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW;}
         	}
         	if(answer=='6')
         	{
-        		while(getchar() != ' ') {Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW};
+        		while(getchar() != ' ') {Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW;}
         	}
 
     	}
+	}
 }
 
 //HIGH LEVEL FUNCTIONS
@@ -148,29 +151,38 @@ void Car_Parameters(void)
 	lcd_print("Set gain with pot");
 	printf("\r\nTurn the potentiometer clockwise to increase the steering gain from 0 to 10.2.\r\nPress # when you are finished.");
 	calibrate();
-	
 	gain = ((float)read_AD_input(7) / 255) * 10.2;
 	printf_fast_f("Your gain is %3.1f", gain);
+	lcd_print("Gain is %d",gain/10.2*100);
+	Wait();
 	
-	
-	lcd_clear();
-	lcd_print("Press 5 keys.\n");
-	printf("\r\nSelect a desired heading (0 to 3599) by inputing 5 digits. Lead with a 0. Press # to confirm.\r\n");
-	desired_heading = calibrate();
+	do
+	{
+		lcd_clear();
+		lcd_print("Press 5 keys.\n");
+		printf("\r\nSelect a desired heading (0 to 3599) by inputing 5 digits. Lead with a 0. Press # to confirm.\r\n");
+		desired_heading = calibrate();
+		Wait();
+	}
+	while (desired_heading > 3599);
 	printf("\r\nYou selected %u as your heading", desired_heading);
 	Wait();
 	
 	lcd_clear();
 	lcd_print("Press 5 keys.\n");
-	printf("\r\nSelect an initial speed (2027 to 3502) by inputing 5 digits. Lead with a 0. Press # to confirm.\r\n");
-	initial_speed = calibrate();
+	do
+	{
+		lcd_clear();
+		lcd_print("Press 5 keys.\n");	
+		printf("\r\nSelect an initial speed (2765 to 3502) by inputing 5 digits. Lead with a 0. Press # to confirm.\r\n");
+		initial_speed = calibrate();
+		Wait();
+	}
+	while (initial_speed < 2765 || initial_speed > 3502);
 	printf("\r\nYou selected %u as your speed", initial_speed);
 	Wait();
 	PCA0CP0 = 0xFFFF - 0;
 	PCA0CP2 = 0xFFFF - initial_speed;
-	printf("\r\nEnd of test\r\n");
-	
-	while(1);
 }
 
 //----------------------------------------------------------------------------
@@ -349,8 +361,8 @@ unsigned int calibrate(void)
 		Pause();					//Pause necessary to prevent overreading the keypad
 		
 		if (keyboard == '#' || keypad == '#') //# is a confirm key, so it will finish calibrate()
-			return value;
-		
+			return value;	
+
 		if (isPress > pressCheck && keypad == 0xFF && keyboard == 0xFF)	//Only increments pressCheck if held key is released
 			pressCheck++;
 		
@@ -444,8 +456,8 @@ void Port_Init()
 	P1 |= 0x80;		//Set impedance high on P1.7
 	P1MDIN &= ~0x80;
 	
-	P3MDOUT &= 0x20; //Pin 3.5 open drain
-	P3 |= 0x20; //Pin 3.5 high impedance
+	P3MDOUT &= ~0x80; //Pin 3.7 open drain
+	P3 |= 0x80; //Pin 3.7 high impedance
 }
 
 //-----------------------------------------------------------------------------
