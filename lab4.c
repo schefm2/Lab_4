@@ -41,7 +41,8 @@ void Set_Motor_PWM(void);
 void Pause(void);
 void Wait(void);
 unsigned int pow(unsigned int a, unsigned char b);
-unsigned int parallel_input(void);
+unsigned int calibrate(void);
+unsigned char read_AD_input(unsigned char pin_number);
 
 
 void Car_Parameters(void);
@@ -82,9 +83,12 @@ void main(void)
 	Car_Parameters();
 	
 	while(1)
+	{
+		
 		Set_Motion();
 		Set_Neutral();
 		Print_Data();
+
     	if (range <= 50)
         //detected something at/closer than 50, stop
     	{
@@ -103,8 +107,6 @@ void main(void)
         	}
 
     	}
-    else
-
 }
 
 //HIGH LEVEL FUNCTIONS
@@ -140,18 +142,28 @@ void Car_Parameters(void)
     lcd_print("Calibration:\nHello world!\n012_345_678:\nabc def ghij");
 	Wait();
 	
+	
+	lcd_clear();
+	lcd_print("Set gain with pot");
+	printf("\r\nTurn the potentiometer clockwise to increase the steering gain from 0 to 10.2.\r\nPress # when you are finished.");
+	calibrate();
+	
+	gain = ((float)read_AD_input(7) / 255) * 10.2;
+	printf_fast_f("Your gain is %3.1f", gain);
+	
+	
 	lcd_clear();
 	lcd_print("Press 5 keys.\n");
 	printf("\r\nSelect a desired heading (0 to 3599) by inputing 5 digits. Lead with a 0. Press # to confirm.\r\n");
-	desired_heading = parallel_input();
-	printf("\r\nYou selected %d as your heading", desired_heading);
+	desired_heading = calibrate();
+	printf("\r\nYou selected %u as your heading", desired_heading);
 	Wait();
 	
 	lcd_clear();
 	lcd_print("Press 5 keys.\n");
 	printf("\r\nSelect an initial speed (2027 to 3502) by inputing 5 digits. Lead with a 0. Press # to confirm.\r\n");
-	initial_speed = parallel_input();
-	printf("\r\nYou selected %d as your speed", initial_speed);
+	initial_speed = calibrate();
+	printf("\r\nYou selected %u as your speed", initial_speed);
 	Wait();
 	PCA0CP0 = 0xFFFF - 0;
 	PCA0CP2 = 0xFFFF - initial_speed;
@@ -178,8 +190,8 @@ void Set_Neutral(void)
 {
     if (SS)
     {
-        SERVO_PW = SERVO_CENTER_PW;
-        MOTOR_PW = MOTOR_NEUTRAL_PW;
+        Servo_PW = SERVO_CENTER_PW;
+        Motor_PW = MOTOR_NEUTRAL_PW;
         while(SS) {}
         //wait until !SS
     }
@@ -319,9 +331,9 @@ unsigned int pow(unsigned int a, unsigned char b)
 }
 
 //----------------------------------------------------------------------------
-//parallel_input
+//calibrate
 //----------------------------------------------------------------------------
-unsigned int parallel_input(void)
+unsigned int calibrate(void)
 {
 	unsigned char keypad;
 	unsigned char keyboard;
@@ -335,7 +347,7 @@ unsigned int parallel_input(void)
 		keypad = read_keypad();		//This constantly sets the keypad to whatever char is on the LCD
 		Pause();					//Pause necessary to prevent overreading the keypad
 		
-		if (keyboard == '#' || keypad == '#') //# is a confirm key, so it will finish parallel_input()
+		if (keyboard == '#' || keypad == '#') //# is a confirm key, so it will finish calibrate()
 			return value;
 		
 		if (isPress > pressCheck && keypad == 0xFF && keyboard == 0xFF)	//Only increments pressCheck if held key is released
@@ -371,7 +383,17 @@ unsigned int parallel_input(void)
 		}
 	}
 }
-
+//----------------------------------------------------------------------------
+//read_AD_input
+//----------------------------------------------------------------------------
+unsigned char read_AD_input(unsigned char pin_number)
+{
+    AMX1SL = pin_number;		//Sets multiplexer to convert correct pin
+    ADC1CN &= ~0x20;			//Clears the A/D conversion complete bit
+    ADC1CN |= 0x10;				//Starts A/D conversion
+    while(!(ADC1CN & 0x20));	//Waits until conversion completes 
+    return ADC1;				//returns converted input, 0-255 inclusive
+}
 //----------------------------------------------------------------------------
 //ADC_Init
 //----------------------------------------------------------------------------
@@ -381,8 +403,8 @@ void ADC_Init(void)
 	ADC1CN = 0x80;	//Enables AD/C converter
 
 	//Gives capacitors in A/D converter time to charge
-	r_check=r_count; //makes sure r_count isn't altered while waiting 
-	while(r_count-3<r_check);
+	r_count = 0; //makes sure r_count isn't altered while waiting 
+	while(r_count < 6);
 
 	//Sets gain to 1
 	ADC1CF |= 0x01;
@@ -395,7 +417,11 @@ void ADC_Init(void)
 void Port_Init()
 {
 	//Initailize POT
-	P1MDOUT |= 0x05;//set output pin for CEX0 and CEX2 in push-pull mode
+	P1MDOUT |= 0x05;	//Set output pin for CEX0 and CEX2 in push-pull mode
+	P1MDOUT &= ~0x80;	//Set POT pin (P1.7) to open drain
+	P1 |= 0x80;		//Set impedance high on P1.7
+	P1MDIN &= ~0x80;
+	
 	P3MDOUT &= 0x20; //Pin 3.5 open drain
 	P3 |= 0x20; //Pin 3.5 high impedance
 }
