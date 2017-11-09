@@ -53,7 +53,7 @@ void Print_Data(void);
 unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
 unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW;
-unsigned char r_check, keyboard, keypad, r_count;
+unsigned char keyboard, keypad, r_count;
 float time, gain;
 
 //sbits
@@ -99,11 +99,13 @@ void main(void)
         	
         	if(answer=='4')
         	{
-        		while(getchar() != ' ') {Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW};
+        		while(getchar() != ' ') {Servo_PW = SERVO_LEFT_PW};
+        		Motor_PW = initial_speed;
         	}
         	if(answer=='6')
         	{
-        		while(getchar() != ' ') {Servo_PW = 10.2*(heading_error) + SERVO_CENTER_PW};
+        		while(getchar() != ' ') {Servo_PW = SERVO_RIGHT_PW};
+        		Motor_PW = initial_speed;
         	}
 
     	}
@@ -290,7 +292,6 @@ void Set_Servo_PWM(void)
 //----------------------------------------------------------------------------
 void Set_Motor_PWM(void)
 {
-	
         //nothing found too close, drive
     {
         Motor_PW = MOTOR_NEUTRAL_PW + ((float)(range-50)/(90-50))*(MOTOR_FORWARD_PW - MOTOR_NEUTRAL_PW);
@@ -403,7 +404,7 @@ void ADC_Init(void)
 	ADC1CN = 0x80;	//Enables AD/C converter
 
 	//Gives capacitors in A/D converter time to charge
-	r_count = 0; //makes sure r_count isn't altered while waiting 
+	r_count = 0;
 	while(r_count < 6);
 
 	//Sets gain to 1
