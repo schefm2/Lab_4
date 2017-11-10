@@ -53,8 +53,9 @@ unsigned char Data[2];
 unsigned int desired_heading = 0;
 unsigned int initial_speed = MOTOR_NEUTRAL_PW;
 unsigned int PCA_overflows, current_heading, heading_error, range, Servo_PW, Motor_PW;
-unsigned char keyboard, keypad, r_count, answer;
-float time, gain;
+unsigned char keyboard, keypad, r_count, print_count, answer, rangeBuff;
+float gain;
+float time = 0;
 
 //sbits
 __sbit __at 0xB7 SS; //Port 3.7 slideswitch run/stop
@@ -77,11 +78,21 @@ void main(void)
 
     Car_Parameters();
     r_count = 0;
-    while(r_count<3);
-    r_count = 0;
 
-    Car_Parameters();
-
+	/*
+	PCA0CP2 = 0xFFFF - initial_speed;
+	while(1)
+	{
+			Read_Compass();
+			Read_Ranger();
+			if (print_count > 40)
+			{
+				printf("\r\nThis is current heading %u\r\nThe current range is %u", current_heading, range);
+				print_count = 0;
+			}
+	}
+	*/
+	
     while(1)
     {
 
@@ -89,35 +100,41 @@ void main(void)
         Set_Neutral();
         Print_Data();
 
-        if ( range <= 50 )
+        if ( range <= 50 && (time - rangeBuff)> 3)
             //detected something at/closer than 50, stop
         {
-            Motor_PW = MOTOR_NEUTRAL_PW;
+            PCA0CP2 = 0xFFFF - MOTOR_NEUTRAL_PW;
             printf("Press 4 for left or 6 for right.\n\rPress space to return to normal path.\n\r");
-            while(answer != '4' && answer != '6') {answer=parallel_input();}
+            while((answer != '4') && (answer != '6'))
+			{
+				answer=parallel_input();
+			}
 
             if(answer=='4')
             {
-                while(getchar() != ' ') 
+				Servo_PW = SERVO_LEFT_PW;
+            	PCA0CP0 = 0xFFFF - Servo_PW;
+            	Motor_PW = initial_speed;
+            	PCA0CP2 = 0xFFFF - Motor_PW;
+                while(getchar_nw() != ' ') 
                 {
-                    Servo_PW = SERVO_LEFT_PW;
-                    PCA0CP0 = 0xFFFF - Servo_PW;
-                    Motor_PW = initial_speed;
-                    PCA0CP2 = 0xFFFF - Motor_PW;
+					
                 }
+				answer = '0';
             }
             if(answer=='6')
             {
+				Servo_PW = SERVO_RIGHT_PW;
+                PCA0CP0 = 0xFFFF - Servo_PW;
+                Motor_PW = initial_speed;
+                PCA0CP2 = 0xFFFF - Motor_PW;
                 while(getchar() != ' ') 
                 {
-                    Servo_PW = SERVO_RIGHT_PW;
-                    PCA0CP0 = 0xFFFF - Servo_PW;
-                    Motor_PW = initial_speed;
-                    PCA0CP2 = 0xFFFF - Motor_PW;
+
                 }
+				answer = '0';
             }
-
-
+			rangeBuff = time;
         }
     }
 }
@@ -142,6 +159,7 @@ void Car_Parameters(void)
        final value must be displayed for the user to see, and allowing the user to make adjustments until
        a desired value is set is a nice feature.
      */
+	unsigned int temp;	//Used to print gain to the LCD
     Servo_PW = SERVO_CENTER_PW;		//Initialize car to straight steering and no movement
     Motor_PW = MOTOR_NEUTRAL_PW;
     PCA0CP0 = 0xFFFF - Servo_PW;
@@ -161,8 +179,9 @@ void Car_Parameters(void)
 	printf("\r\nTurn the potentiometer clockwise to increase the steering gain from 0 to 10.2.\r\nPress # when you are finished.");
 	calibrate();
 	gain = ((float)read_AD_input(7) / 255) * 10.2;
-	printf_fast_f("Your gain is %3.1f", gain);
-	lcd_print("Gain is %d",gain/10.2*100);
+	printf_fast_f("\r\nYour gain is %3.1f", gain);
+	temp = (unsigned char)(gain/10.2*100);
+	lcd_print("\nGain is %u of 100",temp);
 	Wait();
 	
 	do
@@ -175,7 +194,6 @@ void Car_Parameters(void)
 	}
 	while (desired_heading > 3599);
 	printf("\r\nYou selected %u as your heading", desired_heading);
-	Wait();
 	
 	lcd_clear();
 	lcd_print("Press 5 keys.\n");
@@ -233,14 +251,15 @@ void Print_Data(void)
        Tabulate the data from the compass heading error & servo PW & motor PW value & time, and
        transmit it to the SecureCRT terminal for filing and later plotting
      */
-    if(r_count%20)
+    if(print_count > 20)
     {
-        time+=.4;
-        r_count=0;
-        printf("\n%c,%c,%c", time, heading_error, Servo_PW, Motor_PW);
+        time +=.4;
+        print_count=0;
+		printf_fast_f("\r\n%7.1f",time);
+        printf(",%u,%u", heading_error, Servo_PW, Motor_PW);
         lcd_clear();
-        lcd_print("Heading is: %c\n", current_heading);
-        lcd_print("Range is %c\n", range);
+        lcd_print("Heading is: %u\n", current_heading);
+        lcd_print("Range is %u\n", range);
     }
 }
 
@@ -251,7 +270,7 @@ void Print_Data(void)
 //----------------------------------------------------------------------------
 void Read_Compass(void)
 {
-    if (!r_count%2)
+    if (!(r_count % 2))
         //trigger every 40 ms
     {
         i2c_read_data(COMPASS_ADDR, 2, Data, 2);	//Read two byte, starting at reg 2
@@ -265,12 +284,12 @@ void Read_Compass(void)
 //----------------------------------------------------------------------------
 void Read_Ranger(void)
 {
-    if (!r_count % 4)
+    if (r_count > 4)	//Modulus is verified to not work
         //trigger every 80 ms
     {
-        r_count = 0;
+		r_count = 0;
         i2c_read_data(RANGER_ADDR, 2, Data, 2);
-        range = (unsigned int) Data[0] << 8 + (unsigned int) Data[1];
+        range = (((unsigned int)Data[0] << 8) | Data[1]);
         //overwrites prev data and updates range
         Data[0] = PING_CM;
         i2c_write_data (RANGER_ADDR, 0, Data, 1 );
@@ -328,8 +347,8 @@ void Set_Motor_PWM(void)
 //----------------------------------------------------------------------------
 void Pause(void)
 {
-    r_count = 0;
-    while (r_count < 2);
+	r_count = 0;
+	while (r_count < 2){}
 }
 
 //----------------------------------------------------------------------------
@@ -337,8 +356,8 @@ void Pause(void)
 //----------------------------------------------------------------------------
 void Wait(void)
 {
-    r_count = 0;
-    while (r_count < 50);
+	r_count = 0;
+	while (r_count < 50){}
 }
 
 //----------------------------------------------------------------------------
@@ -371,7 +390,7 @@ unsigned int calibrate(void)
 		keyboard = getchar_nw();	//This constantly sets keyboard to whatever char is in the terminal
 		keypad = read_keypad();		//This constantly sets the keypad to whatever char is on the LCD
 		Pause();					//Pause necessary to prevent overreading the keypad
-		
+
 		if (keyboard == '#' || keypad == '#') //# is a confirm key, so it will finish calibrate()
 			return value;	
 
@@ -524,6 +543,7 @@ void PCA_ISR ( void ) __interrupt 9
         CF=0; //clear flag
         PCA0 = 28672;//determine period to 20 ms
         r_count++;
+		print_count++;
     }
     PCA0CN &= 0x40; //Handle other interupt sources
     // reference to the sample code in Example 4.5 -Pulse Width Modulation implemented using
