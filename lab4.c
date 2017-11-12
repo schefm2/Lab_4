@@ -111,6 +111,9 @@ void main(void)
             while((answer != '4') && (answer != '6'))
 			{
 				answer=parallel_input();
+				Read_Compass();
+				Read_Ranger();
+				Print_Data();
 			}
 
             if(answer=='4')
@@ -121,7 +124,9 @@ void main(void)
             	PCA0CP2 = 0xFFFF - Motor_PW;
                 while(getchar_nw() != ' ') 
                 {
-					
+					Read_Compass();
+					Read_Ranger();
+					Print_Data();					
                 }
 				answer = '0';
             }
@@ -133,16 +138,21 @@ void main(void)
                 PCA0CP2 = 0xFFFF - Motor_PW;
                 while(getchar_nw() != ' ') 
                 {
-
+					Read_Compass();
+					Read_Ranger();
+					Print_Data();
                 }
 				answer = '0';
             }
             first_obstacle++;
         }
-        if ( range <= 15 && first_obstacle > 0)
+        while ( range <= 15 && first_obstacle > 0)
         {
 			Motor_PW=MOTOR_NEUTRAL_PW;
         	PCA0CP2 = 0xFFFF - Motor_PW;
+			Read_Compass();
+			Read_Ranger();
+			Print_Data();
         }
     }
 }
@@ -267,7 +277,7 @@ void Print_Data(void)
 		time += 4;
         print_count=0;
 		//printf_fast_f("\r\n%7.1f",time);
-        printf("\r\n%u,%u,%u, %u",time, heading_error, Servo_PW, Motor_PW);
+        printf("\r\n%u,%d,%u,%u",time, heading_error, Servo_PW, Motor_PW);
         lcd_clear();
         lcd_print("Heading is: %u\nRange is: %u\nServo Cycle: %u\nMotor Cycle: %u", current_heading, range, (int)(((float)Servo_PW/28672)*100), (int)(((float)Motor_PW/28672)*100));
     }
@@ -286,6 +296,8 @@ void Read_Compass(void)
         i2c_read_data(COMPASS_ADDR, 2, Data, 2);	//Read two byte, starting at reg 2
         current_heading =(((unsigned int)Data[0] << 8) | Data[1]); //combine the two values
         //heading has units of 1/10 of a degree
+		heading_error = (signed int)desired_heading - current_heading;
+		
     }
 }
 
@@ -311,7 +323,7 @@ void Read_Ranger(void)
 //----------------------------------------------------------------------------
 void Set_Servo_PWM(void)
 {
-    heading_error = (signed int)desired_heading - current_heading;
+    //heading_error = (signed int)desired_heading - current_heading;
     //Should allow error values between 3599 and -3599
 
     //If error greater than abs(180) degrees, then error is set to explementary angle of original error
@@ -448,8 +460,8 @@ unsigned char parallel_input(void)
 {
     unsigned char keypad;
     unsigned char keyboard;
-    while(1)
-    {
+    //while(1)
+    //{
         keyboard = getchar_nw();	//This constantly sets keyboard to whatever char is in the terminal
         keypad = read_keypad();		//This constantly sets the keypad to whatever char is on the LCD
         Pause();					//Pause necessary to prevent overreading the keypad
@@ -458,7 +470,9 @@ unsigned char parallel_input(void)
             return keyboard;
         if (keypad != 0xFF)
             return keypad;
-    }
+		else
+			return 0;
+    //}
 
 }
 //----------------------------------------------------------------------------
