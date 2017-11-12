@@ -105,7 +105,8 @@ void main(void)
         if ( range <= 50 && time >= 20 && first_obstacle == 0)
             //detected something at/closer than 50, stop
         {
-            PCA0CP2 = 0xFFFF - MOTOR_NEUTRAL_PW;
+			Motor_PW= MOTOR_NEUTRAL_PW;
+			PCA0CP2 = 0xFFFF - Motor_PW;
             printf("Press 4 for left or 6 for right.\n\rPress space to return to normal path.\n\r");
             while((answer != '4') && (answer != '6'))
 			{
@@ -140,7 +141,8 @@ void main(void)
         }
         if ( range <= 15 && first_obstacle > 0)
         {
-        	PCA0CP2 = 0xFFFF - MOTOR_NEUTRAL_PW;
+			Motor_PW=MOTOR_NEUTRAL_PW;
+        	PCA0CP2 = 0xFFFF - Motor_PW;
         }
     }
 }
@@ -215,7 +217,8 @@ void Car_Parameters(void)
 	printf("\r\nYou selected %u as your speed", initial_speed);
 	Wait();
 	PCA0CP0 = 0xFFFF - 0;
-	PCA0CP2 = 0xFFFF - initial_speed;
+	Motor_PW= initial_speed;
+	PCA0CP2 = 0xFFFF - Motor_PW;
 }
 
 //----------------------------------------------------------------------------
@@ -266,8 +269,7 @@ void Print_Data(void)
 		//printf_fast_f("\r\n%7.1f",time);
         printf("\r\n%u,%u,%u, %u",time, heading_error, Servo_PW, Motor_PW);
         lcd_clear();
-        lcd_print("Heading is: %u\n", current_heading);
-        lcd_print("Range is %u\n", range);
+        lcd_print("Heading is: %u\nRange is: %u\nServo Cycle: %u\nMotor Cycle: %u", current_heading, range, (int)(((float)Servo_PW/28672)*100), (int)(((float)Motor_PW/28672)*100));
     }
 }
 
@@ -350,7 +352,8 @@ void Set_Motor_PWM(void)
     }
     PCA0CP2 = 0xFFFF - Motor_PW;
 	*/
-	PCA0CP2 = 0xFFFF - initial_speed;
+	Motor_PW= initial_speed;
+	PCA0CP2 = 0xFFFF - Motor_PW;
 }
 
 //----------------------------------------------------------------------------
