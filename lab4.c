@@ -53,7 +53,7 @@ unsigned char Data[2];
 unsigned int desired_heading = 0;
 unsigned int initial_speed = MOTOR_NEUTRAL_PW;
 unsigned int PCA_overflows, current_heading, range, Servo_PW, Motor_PW;
-unsigned char keyboard, keypad, r_count, print_count, answer, rangeBuff;
+unsigned char keyboard, keypad, r_count, print_count, answer, first_obstacle;
 signed int heading_error;
 float gain;
 unsigned int time = 0;	//In tenths of a second
@@ -79,6 +79,7 @@ void main(void)
 
     Car_Parameters();
     r_count = 0;
+    first_obstacle =0;
 
 	/*
 	PCA0CP2 = 0xFFFF - initial_speed;
@@ -101,8 +102,7 @@ void main(void)
         Set_Neutral();
         Print_Data();
 
-		/*
-        if ( range <= 50 && (time - rangeBuff)> 3)
+        if ( range <= 50 && time >= 20 && first_obstacle == 0)
             //detected something at/closer than 50, stop
         {
             PCA0CP2 = 0xFFFF - MOTOR_NEUTRAL_PW;
@@ -130,15 +130,18 @@ void main(void)
                 PCA0CP0 = 0xFFFF - Servo_PW;
                 Motor_PW = initial_speed;
                 PCA0CP2 = 0xFFFF - Motor_PW;
-                while(getchar() != ' ') 
+                while(getchar_nw() != ' ') 
                 {
 
                 }
 				answer = '0';
             }
-			rangeBuff = time;
+            first_obstacle++;
         }
-		*/
+        if ( range <= 15 && first_obstacle > 0)
+        {
+        	PCA0CP2 = 0xFFFF - MOTOR_NEUTRAL_PW;
+        }
     }
 }
 
