@@ -52,10 +52,11 @@ unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
 unsigned int desired_heading = 0;
 unsigned int initial_speed = MOTOR_NEUTRAL_PW;
-unsigned int PCA_overflows, current_heading, heading_error, range, Servo_PW, Motor_PW;
+unsigned int PCA_overflows, current_heading, range, Servo_PW, Motor_PW;
 unsigned char keyboard, keypad, r_count, print_count, answer, rangeBuff;
+signed int heading_error;
 float gain;
-float time = 0;
+unsigned int time = 0;	//In tenths of a second
 
 //sbits
 __sbit __at 0xB7 SS; //Port 3.7 slideswitch run/stop
@@ -100,6 +101,7 @@ void main(void)
         Set_Neutral();
         Print_Data();
 
+		/*
         if ( range <= 50 && (time - rangeBuff)> 3)
             //detected something at/closer than 50, stop
         {
@@ -136,6 +138,7 @@ void main(void)
             }
 			rangeBuff = time;
         }
+		*/
     }
 }
 
@@ -230,8 +233,9 @@ void Set_Neutral(void)
 {
     if (SS)
     {
-        Servo_PW = SERVO_CENTER_PW;
-        Motor_PW = MOTOR_NEUTRAL_PW;
+		PCA0CP0 = 0xFFFF - SERVO_CENTER_PW;
+		PCA0CP2 = 0xFFFF - MOTOR_NEUTRAL_PW;
+
         while(SS) {}
         //wait until !SS
     }
@@ -253,10 +257,11 @@ void Print_Data(void)
      */
     if(print_count > 20)
     {
-        time +=.4;
+        //time +=.4;
+		time += 4;
         print_count=0;
-		printf_fast_f("\r\n%7.1f",time);
-        printf(",%u,%u", heading_error, Servo_PW, Motor_PW);
+		//printf_fast_f("\r\n%7.1f",time);
+        printf("\r\n%u,%u,%u, %u",time, heading_error, Servo_PW, Motor_PW);
         lcd_clear();
         lcd_print("Heading is: %u\n", current_heading);
         lcd_print("Range is %u\n", range);
@@ -301,31 +306,31 @@ void Read_Ranger(void)
 //----------------------------------------------------------------------------
 void Set_Servo_PWM(void)
 {
-    heading_error = (signed int) desired_heading - current_heading;
+    heading_error = (signed int)desired_heading - current_heading;
     //Should allow error values between 3599 and -3599
 
     //If error greater than abs(180) degrees, then error is set to explementary angle of original error
-    /*
-       if (error > 1800)
-       error = error - 3599;
-       if (error < -1800)
-       error = 3599 + error;
-     */
-    heading_error = (heading_error > 1800) ? (heading_error - 3599) : heading_error;
-    heading_error = (heading_error < -1800) ? (heading_error + 3599) : heading_error;
+    
+       if (heading_error > 1800)
+       heading_error = heading_error - 3599;
+       if (heading_error < -1800)
+       heading_error = 3599 + heading_error;
+   
+    //heading_error = (heading_error > 1800) ? (heading_error - 3599) : heading_error;
+    //heading_error = (heading_error < -1800) ? (heading_error + 3599) : heading_error;
 
     Servo_PW = gain*(heading_error) + SERVO_CENTER_PW;		//Limits the change from PW_CENTER to 750
 
-    //Additional precaution: if SERVO_PW somehow exceeds the limits set in Lab 3-1,
+    //Additional precaution: if Servo_PW somehow exceeds the limits set in Lab 3-1,
     //then SERVO_PW is set to corresponding endpoint of PW range [PW_LEFT, PW_RIGHT]
-    /*
-       if (SERVO_PW > PW_RIGHT)
-       SERVO_PW = PW_RIGHT;
-       if (SERVO_PW < PW_LEFT)
-       SERVO_PW = PW_LEFT;
-     */
-    Servo_PW = (Servo_PW > SERVO_RIGHT_PW) ? SERVO_RIGHT_PW : Servo_PW;
-    Servo_PW = (Servo_PW < SERVO_LEFT_PW) ? SERVO_LEFT_PW : Servo_PW;
+    
+       if (Servo_PW > SERVO_RIGHT_PW)
+       Servo_PW = SERVO_RIGHT_PW;
+       if (Servo_PW < SERVO_LEFT_PW)
+       Servo_PW = SERVO_LEFT_PW;
+     
+    //Servo_PW = (Servo_PW > SERVO_RIGHT_PW) ? SERVO_RIGHT_PW : Servo_PW;
+    //Servo_PW = (Servo_PW < SERVO_LEFT_PW) ? SERVO_LEFT_PW : Servo_PW;
 
     PCA0CP0 = 0xFFFF - Servo_PW;
 }
@@ -335,11 +340,14 @@ void Set_Servo_PWM(void)
 //----------------------------------------------------------------------------
 void Set_Motor_PWM(void)
 {
+	/*
     //nothing found too close, drive
     {
         Motor_PW = MOTOR_NEUTRAL_PW + ((float)(range-50)/(90-50))*(MOTOR_FORWARD_PW - MOTOR_NEUTRAL_PW);
     }
     PCA0CP2 = 0xFFFF - Motor_PW;
+	*/
+	PCA0CP2 = 0xFFFF - initial_speed;
 }
 
 //----------------------------------------------------------------------------
