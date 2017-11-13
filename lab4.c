@@ -31,8 +31,6 @@ void SMB_Init();
 //other functions
 void Read_Compass(void);
 void Read_Ranger(void);
-void Read_Compass(void);
-void Read_Ranger(void);
 void Set_Servo_PWM(void);
 void Set_Motor_PWM(void);
 void Pause(void);
@@ -47,6 +45,8 @@ void Car_Parameters(void);
 void Set_Motion(void);
 void Set_Neutral(void);
 void Print_Data(void);
+
+void Read_Print(void);
 
 unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
@@ -111,48 +111,32 @@ void main(void)
             while((answer != '4') && (answer != '6'))
 			{
 				answer=parallel_input();
-				Read_Compass();
-				Read_Ranger();
-				Print_Data();
+				Read_Print();
 			}
 
             if(answer=='4')
             {
 				Servo_PW = SERVO_LEFT_PW;
-            	PCA0CP0 = 0xFFFF - Servo_PW;
-            	Motor_PW = initial_speed;
-            	PCA0CP2 = 0xFFFF - Motor_PW;
-                while(getchar_nw() != ' ') 
-                {
-					Read_Compass();
-					Read_Ranger();
-					Print_Data();					
-                }
-				answer = '0';
             }
             if(answer=='6')
             {
 				Servo_PW = SERVO_RIGHT_PW;
-                PCA0CP0 = 0xFFFF - Servo_PW;
-                Motor_PW = initial_speed;
-                PCA0CP2 = 0xFFFF - Motor_PW;
-                while(getchar_nw() != ' ') 
-                {
-					Read_Compass();
-					Read_Ranger();
-					Print_Data();
-                }
-				answer = '0';
             }
+            PCA0CP0 = 0xFFFF - Servo_PW;
+            Motor_PW = initial_speed;
+            PCA0CP2 = 0xFFFF - Motor_PW;
+            while(getchar_nw() != ' ') 
+            {
+                Read_Print();
+            }
+            answer = '0';
             first_obstacle++;
         }
         while ( range <= 15 && first_obstacle > 0)
         {
 			Motor_PW=MOTOR_NEUTRAL_PW;
         	PCA0CP2 = 0xFFFF - Motor_PW;
-			Read_Compass();
-			Read_Ranger();
-			Print_Data();
+			Read_Print();
         }
     }
 }
@@ -256,6 +240,18 @@ void Set_Neutral(void)
         //wait until !SS
     }
 }
+
+//----------------------------------------------------------------------------
+//Read_Print
+//----------------------------------------------------------------------------
+//To call Read_Compass, Read_Ranger, and Print_Data all together: common thing
+void Read_Print(void)
+{
+    Read_Compass();
+    Read_Ranger();
+    Print_Data();
+}
+
 
 //----------------------------------------------------------------------------
 //Print_Data

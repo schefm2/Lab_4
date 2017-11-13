@@ -50,3 +50,20 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# SiLabs workspaces, generated files
+*.\#1
+*.\#2
+*.\#3
+*.adb
+*.asm
+*.cdb
+*.lk
+*.lst
+*.mem
+*.omf
+*.rel
+*.rst
+*.sym
+*.wsp
+.*.swp
