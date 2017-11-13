@@ -10,9 +10,9 @@
 
 #define PCA_START 28672
 
-#define SERVO_LEFT_PW 2395
-#define SERVO_CENTER_PW 2825
-#define SERVO_RIGHT_PW 3185
+#define SERVO_LEFT_PW 2425
+#define SERVO_CENTER_PW 2895
+#define SERVO_RIGHT_PW 3245
 
 #define MOTOR_REVERSE_PW 2027 
 #define MOTOR_NEUTRAL_PW 2765
@@ -132,7 +132,7 @@ void main(void)
             answer = '0';
             first_obstacle++;
         }
-        while ( range <= 15 && first_obstacle > 0)
+        while ( range <= 35 && first_obstacle > 0)
         {
 			Motor_PW=MOTOR_NEUTRAL_PW;
         	PCA0CP2 = 0xFFFF - Motor_PW;
