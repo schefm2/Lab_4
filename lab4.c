@@ -48,7 +48,6 @@ void Print_Data(void);
 
 void Read_Print(void);
 
-unsigned char addr=0xE0; // the address of the ranger is 0xE0
 unsigned char Data[2];
 unsigned int desired_heading = 0;
 unsigned int initial_speed = MOTOR_NEUTRAL_PW;
@@ -360,7 +359,7 @@ void Set_Motor_PWM(void)
     }
     PCA0CP2 = 0xFFFF - Motor_PW;
 	*/
-	Motor_PW= initial_speed;
+	Motor_PW = initial_speed;
 	PCA0CP2 = 0xFFFF - Motor_PW;
 }
 
