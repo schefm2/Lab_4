@@ -151,7 +151,7 @@ Functions
 			Pause()
 			If keypad is '5'
 				break
-			if keyboard is 'a'
+			if keyboard is 'a' 
 				break
 			If keypad is not 0xFF
 				print out selected keypad direction and ask for confirmation of direction
