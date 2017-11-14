@@ -55,8 +55,7 @@ unsigned int initial_speed = MOTOR_NEUTRAL_PW;
 unsigned int PCA_overflows, current_heading, range, Servo_PW, Motor_PW;
 unsigned char keyboard, keypad, r_count, print_count, answer, first_obstacle;
 signed int heading_error;
-float gain;
-unsigned int time = 0;	//In tenths of a second
+float gain, time; //time in tenths of a second
 
 //sbits
 __sbit __at 0xB7 SS; //Port 3.7 slideswitch run/stop
@@ -163,56 +162,56 @@ void Car_Parameters(void)
      */
 	unsigned int temp;	//Used to print gain to the LCD
     Servo_PW = SERVO_CENTER_PW;		//Initialize car to straight steering and no movement
-    Motor_PW = MOTOR_NEUTRAL_PW;
-    PCA0CP0 = 0xFFFF - Servo_PW;
-    PCA0CP2 = 0xFFFF - Motor_PW;
+    Motor_PW = MOTOR_NEUTRAL_PW;	//Set pulse to stop car
+    PCA0CP0 = 0xFFFF - Servo_PW;	//tell hardware to use new servo pulse width
+    PCA0CP2 = 0xFFFF - Motor_PW;	//tell hardware to use new motor pulse width
 
 
-    printf("\nStart");
+    printf("\nStart");		//print start
 
-    Wait();
-    lcd_clear();
-    lcd_print("Calibration:\nHello world!\n012_345_678:\nabc def ghij");
-	Wait();
+    Wait();					//Wait for 1 second
+    lcd_clear();			//clear lcd screen
+    lcd_print("Calibration:\nHello world!\n012_345_678:\nabc def ghij");	
+	Wait();		//wait 1 second
 	
 	
 	lcd_clear();
-	lcd_print("Set gain with pot");
+	lcd_print("Set gain with pot");		//tell user to set gain with potentiometer
 	printf("\r\nTurn the potentiometer clockwise to increase the steering gain from 0 to 10.2.\r\nPress # when you are finished.");
-	calibrate();
-	gain = ((float)read_AD_input(7) / 255) * 10.2;
-	printf_fast_f("\r\nYour gain is %3.1f", gain);
+	calibrate();		//take 5 digit input
+	gain = ((float)read_AD_input(7) / 255) * 10.2; //set gain from pot
+	printf_fast_f("\r\nYour gain is %3.1f", gain); //print gain
 	temp = (unsigned char)(gain/10.2*100);
 	lcd_print("\nGain is %u of 100",temp);
-	Wait();
+	Wait(); //wait a second
 	
 	do
 	{
-		lcd_clear();
-		lcd_print("Press 5 keys.\n");
+		lcd_clear(); //clear screen
+		lcd_print("Press 5 keys.\n"); //print instructions
 		printf("\r\nSelect a desired heading (0 to 3599) by inputing 5 digits. Lead with a 0. Press # to confirm.\r\n");
-		desired_heading = calibrate();
-		Wait();
+		desired_heading = calibrate();	//take 5 digit input
+		Wait(); //wait a second
 	}
-	while (desired_heading > 3599);
-	printf("\r\nYou selected %u as your heading", desired_heading);
+	while (desired_heading > 3599); //wait until you get appropriate heading
+	printf("\r\nYou selected %u as your heading", desired_heading); //print heading
 	
-	lcd_clear();
+	lcd_clear(); //clear screen
 	lcd_print("Press 5 keys.\n");
 	do
 	{
 		lcd_clear();
-		lcd_print("Press 5 keys.\n");	
+		lcd_print("Press 5 keys.\n");	//print instructions
 		printf("\r\nSelect an initial speed (2765 to 3502) by inputing 5 digits. Lead with a 0. Press # to confirm.\r\n");
-		initial_speed = calibrate();
-		Wait();
+		initial_speed = calibrate(); //take 5 digits 
+		Wait(); //wait a second
 	}
-	while (initial_speed < 2765 || initial_speed > 3502);
-	printf("\r\nYou selected %u as your speed", initial_speed);
-	Wait();
-	PCA0CP0 = 0xFFFF - 0;
+	while (initial_speed < 2765 || initial_speed > 3502);  //wait for appropriate speed
+	printf("\r\nYou selected %u as your speed", initial_speed);  //print speed
+	Wait();  //wait a second
+	PCA0CP0 = 0xFFFF - 0; //activate servo
 	Motor_PW= initial_speed;
-	PCA0CP2 = 0xFFFF - Motor_PW;
+	PCA0CP2 = 0xFFFF - Motor_PW; //activate motor
 }
 
 //----------------------------------------------------------------------------
@@ -220,6 +219,7 @@ void Car_Parameters(void)
 //----------------------------------------------------------------------------
 void Set_Motion(void)
 {
+	//read sensors and set pulse widths
     Read_Compass();
     Read_Ranger();
     Set_Servo_PWM();
@@ -231,6 +231,7 @@ void Set_Motion(void)
 //----------------------------------------------------------------------------
 void Set_Neutral(void)
 {
+	//set servo to center and stop motor
     if (SS)
     {
 		PCA0CP0 = 0xFFFF - SERVO_CENTER_PW;
@@ -270,10 +271,10 @@ void Print_Data(void)
     if(print_count > 20)
     {
         //time +=.4;
-		time += 4;
+		time += print_count/5;
         print_count=0;
 		//printf_fast_f("\r\n%7.1f",time);
-        printf("\r\n%u,%d,%u,%u",time, heading_error, Servo_PW, Motor_PW);
+        printf("\r\n%u,%d,%u,%u", (int)time, heading_error, Servo_PW, Motor_PW);
         lcd_clear();
         lcd_print("Heading is: %u\nRange is: %u\nServo Cycle: %u\nMotor Cycle: %u", current_heading, range, (int)(((float)Servo_PW/28672)*100), (int)(((float)Motor_PW/28672)*100));
     }
@@ -337,10 +338,8 @@ void Set_Servo_PWM(void)
     //Additional precaution: if Servo_PW somehow exceeds the limits set in Lab 3-1,
     //then SERVO_PW is set to corresponding endpoint of PW range [PW_LEFT, PW_RIGHT]
     
-       if (Servo_PW > SERVO_RIGHT_PW)
-       Servo_PW = SERVO_RIGHT_PW;
-       if (Servo_PW < SERVO_LEFT_PW)
-       Servo_PW = SERVO_LEFT_PW;
+       if (Servo_PW > SERVO_RIGHT_PW) Servo_PW = SERVO_RIGHT_PW;
+       if (Servo_PW < SERVO_LEFT_PW) Servo_PW = SERVO_LEFT_PW;
      
     //Servo_PW = (Servo_PW > SERVO_RIGHT_PW) ? SERVO_RIGHT_PW : Servo_PW;
     //Servo_PW = (Servo_PW < SERVO_LEFT_PW) ? SERVO_LEFT_PW : Servo_PW;
@@ -369,6 +368,7 @@ void Set_Motor_PWM(void)
 //----------------------------------------------------------------------------
 void Pause(void)
 {
+	//pause 40 ms
 	r_count = 0;
 	while (r_count < 2){}
 }
@@ -378,6 +378,7 @@ void Pause(void)
 //----------------------------------------------------------------------------
 void Wait(void)
 {
+	//wait a second
 	r_count = 0;
 	while (r_count < 50){}
 }
@@ -387,6 +388,7 @@ void Wait(void)
 //----------------------------------------------------------------------------
 unsigned int pow(unsigned int a, unsigned char b)
 {
+	//power function to be used for 5 digit input
     unsigned char i;
     unsigned char base = a;
 
