@@ -1,4 +1,31 @@
-/* Sample code for speed control using PWM. */
+/*  
+	Names: Sydney Bahs, Tom Saad, Matthew Scheffer
+    Section: 2
+    Date: 11/17/17
+    File name: lab4.c
+    Description: This program operates a battery-powered car, which communicates
+	with the user through an LCD screen attached to the car and a wireless link
+	between the car and the user's computer terminal. The program starts
+	by asking the user to input a desired direction and the speed the car will
+	operate at, as well as a gain that will be used to calculate steering corrections
+	when the car is not headed in the desired direction. The desired direction and
+	speed are set by typing in a 5 digit number (leading with zeroes if necessary)
+	using either the LCD keypad or the computer terminal. The gain is set using a
+	potentiometer attached to the car's circuit board. Whenever a value is set properly,
+	the user presses the # key to confirm their choice. The car then attempts to
+	drive towards the desired direction and make corrections to its steering if it is off.
+	If it encounters an obstacle, it stops 50 cm in front of said obstacle, and asks
+	the user to direct the car left or right using the '4' and '6' keys, respectively, on
+	either the keypad or keyboard. The car then makes a hard left or right turn and
+	moves forward until the user presses the space key on their keyboard. The car
+	then resumes normal functioning. If a second obstacle is encountered, the car
+	will stop indefinitely at 35 cm in front of the obstacle; if the obstacle is
+	moved out of the way, then the car resumes normal functioning until another obstacle
+	is encountered, at which point it will stop and wait for the obstacle to be moved
+	out of the way. This repeats until the car runs out of battery power. At any point
+	during normal operation, the user may set the car in neutral by switching ON a
+	slideswitch located on the car's circuit board.
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <c8051_SDCC.h>
@@ -8,8 +35,9 @@
 #define COMPASS_ADDR 0xC0
 #define PING_CM 0x51
 
-#define PCA_START 28672
+#define PCA_START 28672		//PCA0 value for a pulse of ~20 ms
 
+//Left and right pulse widths set so that Servo isn't strained
 #define SERVO_LEFT_PW 2425
 #define SERVO_CENTER_PW 2895
 #define SERVO_RIGHT_PW 3245
@@ -25,10 +53,10 @@ void Port_Init(void);
 void PCA_Init (void);
 void XBR0_Init(void);
 void Interrupt_Init(void);
-void ADC_Init();						//Initialize the ADC converter
+void ADC_Init();
 void SMB_Init();
 
-//other functions
+//Low Level Functions
 void Read_Compass(void);
 void Read_Ranger(void);
 void Set_Servo_PWM(void);
@@ -40,101 +68,92 @@ unsigned int calibrate(void);
 unsigned char parallel_input(void);
 unsigned char read_AD_input(unsigned char pin_number);
 
-
+//High Level Functions
 void Car_Parameters(void);
 void Set_Motion(void);
 void Set_Neutral(void);
 void Print_Data(void);
-
 void Read_Print(void);
 
-unsigned char Data[2];
+//Global Variables
+unsigned char Data[2];	//Data array used to read and write to I2C Bus slaves
 unsigned int desired_heading = 0;
 unsigned int initial_speed = MOTOR_NEUTRAL_PW;
 unsigned int PCA_overflows, current_heading, range, Servo_PW, Motor_PW;
 unsigned char keyboard, keypad, r_count, print_count, answer, first_obstacle;
 signed int heading_error;
-float gain, time; //time in tenths of a second
+float gain, time; //Time is in tenths of a second
 
 //sbits
-__sbit __at 0xB7 SS; //Port 3.7 slideswitch run/stop
-__sbit __at 0x97 POT; //Port 1.7 potentiometer
+__sbit __at 0xB7 SS;	//P3.7 (pin 32 on EVB connector); slideswitch run/stop
 
 //-----------------------------------------------------------------------------
 // Main Function
 //-----------------------------------------------------------------------------
 void main(void)
 {
-    // initialize board
+    //Initialize board
     Sys_Init();
-    putchar(' '); //the quotes in this line may not format correctly
+    putchar(' '); //The quotes in this line may not format correctly
     Port_Init();
     XBR0_Init();
     Interrupt_Init();
     PCA_Init();
     SMB_Init();
-    ADC_Init();
+    ADC_Init();	//Must come after PCA_Init to allow capacitors to charge
 
-    Car_Parameters();
-    r_count = 0;
+    Car_Parameters();	//Sets gain, desired_heading, and initial_speed
+    
+	//Reset time/logic-keeping variables
+	r_count = 0;
+	print_count = 0;
     first_obstacle =0;
-
-	/*
-	PCA0CP2 = 0xFFFF - initial_speed;
-	while(1)
-	{
-			Read_Compass();
-			Read_Ranger();
-			if (print_count > 40)
-			{
-				printf("\r\nThis is current heading %u\r\nThe current range is %u", current_heading, range);
-				print_count = 0;
-			}
-	}
-	*/
 	
     while(1)
     {
 
-        Set_Motion();
-        Set_Neutral();
-        Print_Data();
+        Set_Motion();	//Reads compass/ranger and sets their respective PW's
+        Set_Neutral();	//If the slide switch is ON, the car is in neutral and steering is centered
+        Print_Data();	//Prints data required for plotting control algorithm performance
 
         if ( range <= 50 && time >= 20 && first_obstacle == 0)
-            //detected something at/closer than 50, stop
+            //Detected something at/closer than 50, stop
         {
-			Motor_PW= MOTOR_NEUTRAL_PW;
-			PCA0CP2 = 0xFFFF - Motor_PW;
+			Motor_PW = MOTOR_NEUTRAL_PW;
+			PCA0CP2 = 0xFFFF - Motor_PW;	//Set car in neutral
             printf("Press 4 for left or 6 for right.\n\rPress space to return to normal path.\n\r");
             while((answer != '4') && (answer != '6'))
 			{
-				answer=parallel_input();
-				Read_Print();
+				answer=parallel_input();	//Reads the terminal and LCD keypad for a char
+				Read_Print();	//Prints data required for plotting control algorithm performance 
+								//& reads compass/ranger
 			}
 
             if(answer=='4')
             {
-				Servo_PW = SERVO_LEFT_PW;
+				Servo_PW = SERVO_LEFT_PW;	//Set steering hard left
             }
             if(answer=='6')
             {
-				Servo_PW = SERVO_RIGHT_PW;
+				Servo_PW = SERVO_RIGHT_PW;	//Set steering hard right
             }
-            PCA0CP0 = 0xFFFF - Servo_PW;
+            PCA0CP0 = 0xFFFF - Servo_PW;	//Outside previous two if's to prevent redundancy
             Motor_PW = initial_speed;
-            PCA0CP2 = 0xFFFF - Motor_PW;
-            while(getchar_nw() != ' ') 
+            PCA0CP2 = 0xFFFF - Motor_PW;	//Resume forward motion
+            while(getchar_nw() != ' ')
+				//Waits for a space input on keyboard
             {
-                Read_Print();
+                Read_Print();	//Keeps printing and reading devices while waiting
             }
-            answer = '0';
-            first_obstacle++;
+            answer = '0';	//Reset answer
+            first_obstacle++;	//First obstacle has been passed
         }
         while ( range <= 35 && first_obstacle > 0)
+			//Car has passed first obstacle and second obstacle is <35 cm away
         {
 			Motor_PW=MOTOR_NEUTRAL_PW;
-        	PCA0CP2 = 0xFFFF - Motor_PW;
-			Read_Print();
+        	PCA0CP2 = 0xFFFF - Motor_PW;	//Set car to neutral
+			Read_Print();	//Print and read data while stopped
         }
     }
 }
@@ -195,8 +214,6 @@ void Car_Parameters(void)
 	while (desired_heading > 3599); //wait until you get appropriate heading
 	printf("\r\nYou selected %u as your heading", desired_heading); //print heading
 	
-	lcd_clear(); //clear screen
-	lcd_print("Press 5 keys.\n");
 	do
 	{
 		lcd_clear();
@@ -208,8 +225,7 @@ void Car_Parameters(void)
 	while (initial_speed < 2765 || initial_speed > 3502);  //wait for appropriate speed
 	printf("\r\nYou selected %u as your speed", initial_speed);  //print speed
 	Wait();  //wait a second
-	PCA0CP0 = 0xFFFF - 0; //activate servo
-	Motor_PW= initial_speed;
+	Motor_PW = initial_speed;
 	PCA0CP2 = 0xFFFF - Motor_PW; //activate motor
 }
 
@@ -236,15 +252,17 @@ void Set_Neutral(void)
 		PCA0CP0 = 0xFFFF - SERVO_CENTER_PW;
 		PCA0CP2 = 0xFFFF - MOTOR_NEUTRAL_PW;
 
-        while(SS) {}
-        //wait until !SS
+        while(SS) {}	//wait until slideswitch is turned OFF
     }
 }
 
 //----------------------------------------------------------------------------
 //Read_Print
 //----------------------------------------------------------------------------
-//To call Read_Compass, Read_Ranger, and Print_Data all together: common thing
+//
+// Used to allow the car to continue making readings to print those readings
+// while it is in non-normal operating conditions (i.e. encountering obstacle).
+//
 void Read_Print(void)
 {
     Read_Compass();
@@ -258,22 +276,12 @@ void Read_Print(void)
 //----------------------------------------------------------------------------
 void Print_Data(void)
 {
-    /*
-       Once the desired heading and gains are
-       selected, the LCD should display the current heading, the current range and optionally the battery 
-       voltage. Updating the display every 400 ms or longer is reasonable. Updating more frequently is not
-       needed and should be avoided.
-
-       Tabulate the data from the compass heading error & servo PW & motor PW value & time, and
-       transmit it to the SecureCRT terminal for filing and later plotting
-     */
     if(print_count > 20)
+		//Only prints ever ~400 ms
     {
-        //time +=.4;
-		time += print_count/5;
-        print_count=0;
-		//printf_fast_f("\r\n%7.1f",time);
-        printf("\r\n%u,%d,%u,%u", (int)time, heading_error, Servo_PW, Motor_PW);
+		time += print_count/5;	//Ensures accurate time readings
+        print_count = 0;
+        printf("\r\n%u,%d,%u,%u", (int)time, heading_error, Servo_PW, range);
         lcd_clear();
         lcd_print("Heading is: %u\nRange is: %u\nServo Cycle: %u\nMotor Cycle: %u", current_heading, range, (int)(((float)Servo_PW/28672)*100), (int)(((float)Motor_PW/28672)*100));
     }
@@ -284,16 +292,29 @@ void Print_Data(void)
 //----------------------------------------------------------------------------
 //Read_Compass
 //----------------------------------------------------------------------------
+//
+// Note: this function performs heading_error calculations instead of Set_Servo_PWM
+// to allow heading_error to update during non-normal operating conditions
+// (i.e. encountering obstacle).
+//
 void Read_Compass(void)
 {
-    if (!(r_count % 2))
-        //trigger every 40 ms
+    if (!(r_count % 2) && r_count != 0)
+        //Trigger every 40 ms
     {
         i2c_read_data(COMPASS_ADDR, 2, Data, 2);	//Read two byte, starting at reg 2
-        current_heading =(((unsigned int)Data[0] << 8) | Data[1]); //combine the two values
-        //heading has units of 1/10 of a degree
-		heading_error = (signed int)desired_heading - current_heading;
+        current_heading =(((unsigned int)Data[0] << 8) | Data[1]); //Combine the two values
+        //Heading has units of tenths of a degree
 		
+		heading_error = (signed int)desired_heading - current_heading;
+		//heading_error is now between -3599 and 3599
+		
+		//If the error is greater abs(1800) degree-tenths, then error is set to 
+		//explementary angle of original error
+		if (heading_error > 1800)
+			heading_error = heading_error - 3599;
+		if (heading_error < -1800)
+			heading_error = 3599 + heading_error;
     }
 }
 
@@ -302,13 +323,13 @@ void Read_Compass(void)
 //----------------------------------------------------------------------------
 void Read_Ranger(void)
 {
-    if (r_count > 4)	//Modulus is verified to not work
-        //trigger every 80 ms
+    if (r_count > 4)
+        //Trigger every 80 ms
     {
-		r_count = 0;
+		r_count = 0;	//r_count reset here to give ranger time to receive its ping
         i2c_read_data(RANGER_ADDR, 2, Data, 2);
         range = (((unsigned int)Data[0] << 8) | Data[1]);
-        //overwrites prev data and updates range
+        //Overwrites prev data and updates range
         Data[0] = PING_CM;
         i2c_write_data (RANGER_ADDR, 0, Data, 1 );
     }
@@ -319,31 +340,14 @@ void Read_Ranger(void)
 //----------------------------------------------------------------------------
 void Set_Servo_PWM(void)
 {
-    //heading_error = (signed int)desired_heading - current_heading;
-    //Should allow error values between 3599 and -3599
-
-    //If error greater than abs(180) degrees, then error is set to explementary angle of original error
-    
-       if (heading_error > 1800)
-       heading_error = heading_error - 3599;
-       if (heading_error < -1800)
-       heading_error = 3599 + heading_error;
-   
-    //heading_error = (heading_error > 1800) ? (heading_error - 3599) : heading_error;
-    //heading_error = (heading_error < -1800) ? (heading_error + 3599) : heading_error;
-
-    Servo_PW = gain*(heading_error) + SERVO_CENTER_PW;		//Limits the change from PW_CENTER to 750
+	//Servo_PW set to value based on heading_error modified by gain set in Car_Parameters()
+	Servo_PW = gain*(heading_error) + SERVO_CENTER_PW;
 
     //Additional precaution: if Servo_PW somehow exceeds the limits set in Lab 3-1,
-    //then SERVO_PW is set to corresponding endpoint of PW range [PW_LEFT, PW_RIGHT]
-    
-       if (Servo_PW > SERVO_RIGHT_PW) Servo_PW = SERVO_RIGHT_PW;
-       if (Servo_PW < SERVO_LEFT_PW) Servo_PW = SERVO_LEFT_PW;
-     
-    //Servo_PW = (Servo_PW > SERVO_RIGHT_PW) ? SERVO_RIGHT_PW : Servo_PW;
-    //Servo_PW = (Servo_PW < SERVO_LEFT_PW) ? SERVO_LEFT_PW : Servo_PW;
-
-    PCA0CP0 = 0xFFFF - Servo_PW;
+    //then Servo_PW is set to corresponding endpoint of PW range [SERVO_LEFT_PW, SERVO_RIGHT_PW]
+	if (Servo_PW > SERVO_RIGHT_PW) Servo_PW = SERVO_RIGHT_PW;
+	if (Servo_PW < SERVO_LEFT_PW) Servo_PW = SERVO_LEFT_PW;
+	PCA0CP0 = 0xFFFF - Servo_PW;
 }
 
 //----------------------------------------------------------------------------
@@ -351,13 +355,8 @@ void Set_Servo_PWM(void)
 //----------------------------------------------------------------------------
 void Set_Motor_PWM(void)
 {
-	/*
-    //nothing found too close, drive
-    {
-        Motor_PW = MOTOR_NEUTRAL_PW + ((float)(range-50)/(90-50))*(MOTOR_FORWARD_PW - MOTOR_NEUTRAL_PW);
-    }
-    PCA0CP2 = 0xFFFF - Motor_PW;
-	*/
+	//When car is not in neutral, it runs at speed set in Car_Parameters() at
+	//beginning of program
 	Motor_PW = initial_speed;
 	PCA0CP2 = 0xFFFF - Motor_PW;
 }
@@ -367,7 +366,7 @@ void Set_Motor_PWM(void)
 //----------------------------------------------------------------------------
 void Pause(void)
 {
-	//pause 40 ms
+	//Stop for 40 ms
 	r_count = 0;
 	while (r_count < 2){}
 }
@@ -377,7 +376,7 @@ void Pause(void)
 //----------------------------------------------------------------------------
 void Wait(void)
 {
-	//wait a second
+	//Stop for 1000 ms
 	r_count = 0;
 	while (r_count < 50){}
 }
@@ -385,9 +384,12 @@ void Wait(void)
 //----------------------------------------------------------------------------
 //Pow
 //----------------------------------------------------------------------------
+//
+// Stripped back version of math.h power function, used in calibrate(). 
+// Raises a to the power of b.
+//
 unsigned int pow(unsigned int a, unsigned char b)
 {
-	//power function to be used for 5 digit input
     unsigned char i;
     unsigned char base = a;
 
@@ -406,7 +408,7 @@ unsigned int calibrate(void)
 	unsigned char keyboard;
 	unsigned char isPress = 0;
 	unsigned char pressCheck = 0;
-	unsigned int value = 0;
+	unsigned int value = 0;	//Final value to be returned
 	
 	while(1)
 	{
@@ -453,24 +455,26 @@ unsigned int calibrate(void)
 //----------------------------------------------------------------------------
 //parallel_input
 //----------------------------------------------------------------------------
+//
+// Function designed to take input from either the keyboard or keypad; must be
+// called multiple times in a while loop until desired value is input.
+//
 unsigned char parallel_input(void)
 {
     unsigned char keypad;
     unsigned char keyboard;
-    //while(1)
-    //{
-        keyboard = getchar_nw();	//This constantly sets keyboard to whatever char is in the terminal
-        keypad = read_keypad();		//This constantly sets the keypad to whatever char is on the LCD
-        Pause();					//Pause necessary to prevent overreading the keypad
 
-        if (keyboard != 0xFF)
-            return keyboard;
-        if (keypad != 0xFF)
-            return keypad;
-		else
-			return 0;
-    //}
+	keyboard = getchar_nw();	//This constantly sets keyboard to whatever char is in the terminal
+	keypad = read_keypad();		//This constantly sets the keypad to whatever char is on the LCD
+	Pause();					//Pause necessary to prevent overreading the keypad
 
+	//Returns the value of the respective input that has a key pressed
+	if (keyboard != 0xFF)
+		return keyboard;
+	if (keypad != 0xFF)
+		return keypad;
+	else
+		return 0;	//Return 0 if no key is pressed
 }
 //----------------------------------------------------------------------------
 //read_AD_input
@@ -507,9 +511,9 @@ void Port_Init()
 {
 	//Initailize POT
 	P1MDOUT |= 0x05;	//Set output pin for CEX0 and CEX2 in push-pull mode
-	P1MDOUT &= ~0x80;	//Set POT pin (P1.7) to open drain
-	P1 |= 0x80;		//Set impedance high on P1.7
-	P1MDIN &= ~0x80;
+	P1MDOUT &= ~0x80;	//Set potentiometer pin (P1.7) to open drain
+	P1 |= 0x80;			//Set impedance high on P1.7
+	P1MDIN &= ~0x80;	//Set P1.7 to analog input
 	
 	P3MDOUT &= ~0x80; //Pin 3.7 open drain
 	P3 |= 0x80; //Pin 3.7 high impedance
@@ -524,7 +528,7 @@ void Port_Init()
 void Interrupt_Init(void)
 {
     // IE and EIE1
-    EA=1;
+    EA = 1;
     EIE1 |= 0x08;
 }
 
@@ -536,8 +540,8 @@ void Interrupt_Init(void)
 //
 void XBR0_Init(void)
 {
-    XBR0 = 0x27; //configure crossbar with UART, SPI, SMBus, and CEX channels as
-    // in worksheet
+    XBR0 = 0x27;	//configure crossbar with UART, SPI, SMBus, and CEX channels as
+					//in worksheet
 }
 
 //-----------------------------------------------------------------------------
