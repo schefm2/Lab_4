@@ -5,81 +5,118 @@ compiler directives
 	#include <i2c.h>  
 
 declare constants
-	#define ON 1
-	#define OFF 0
-
 	#define RANGER_ADDR 0xE0
 	#define COMPASS_ADDR 0xC0
 	#define PING_CM 0x51
 
 	#define PCA_START 28672
 
-	#define SERVO_LEFT_PW 2395
-	#define SERVO_CENTER_PW 2825
-	#define SERVO_RIGHT_PW 3185
+	#define SERVO_LEFT_PW 2425
+	#define SERVO_CENTER_PW 2895
+	#define SERVO_RIGHT_PW 3245
 
 	#define MOTOR_REVERSE_PW 2027 
 	#define MOTOR_NEUTRAL_PW 2765
 	#define MOTOR_FORWARD_PW 3502
 
 
-declare global variables
-	__sbit __at 0xB7 SS
-
-	unsigned int PCA_overflows, desired_heading, current_heading, heading_error, initial_speed, range, Servo_PW, Motor_PW
-	unsigned char nestedCount, readCount, compassFlag, rangerFlag, keyboard, keypad
-	unsigned char Data[2]
-	
-
 function prototypes
-	Initialization Functions
+	Initializations
 		void Port_Init(void);
+		void PCA_Init (void);
+		void XBR0_Init(void);
 		void Interrupt_Init(void);
-		void PCA_Init(void);
-		void ADC_Init(void);
-		void SMB_Init(void);
-		void PCA_ISR(void) __interrupt 9;
-	
+		void ADC_Init();
+		void SMB_Init();
+
 	High Level Functions
+		void Read_Compass(void);
+		void Read_Ranger(void);
+		void Set_Servo_PWM(void);
+		void Set_Motor_PWM(void);
+		void Read_Print(void);
+	
+	Low Level Functions
+		unsigned int pow(unsigned int a, unsigned char b);
+		unsigned int calibrate(void);
+		unsigned char parallel_input(void);
+		unsigned char read_AD_input(unsigned char pin_number);
+		void Car_Parameters(void);
 		void Set_Motion(void);
 		void Set_Neutral(void);
 		void Print_Data(void);
-		void Car_Parameters(void);
-	
-	Low Level Functions
-		void Read_Compass(void);
-		void Read_Ranger(void);
-		void read_AD_input(void);
-		void getchar_nw(void);
-		void Set_Servo_PWM(void);
-		void Set_Motor_PWM(void);
 		void Pause(void);
-		
-main function
-	Sys_Init();
-	putchar(' ');
-	Port_Init();
-	Interrupt_Init();
-	PCA_Init();
-	ADC_Init();
-	SMB_Init();
+		void Wait(void);
 
-	Set PCA_overflows to 0
-	Wait while PCA_overflows < 50
+global variables
+	unsigned char Data[2];
+	unsigned int desired_heading = 0;
+	unsigned int initial_speed = MOTOR_NEUTRAL_PW;
+	unsigned int PCA_overflows, current_heading, range, Servo_PW, Motor_PW;
+	unsigned char keyboard, keypad, r_count, print_count, answer, first_obstacle;
+	signed int heading_error;
+	float gain, time;
+
+sbits
+	__sbit __at 0xB7 SS;
 	
-	Car_Parameters();
-	
-	Begin infinite loop
-		Set_Motion();
-		Set_Neutral();
-		Print_Data();
-	End infinite loop
+main function
+    Sys_Init();
+    putchar(' ');
+    Port_Init();
+    XBR0_Init();
+    Interrupt_Init();
+    PCA_Init();
+    SMB_Init();
+    ADC_Init();
+
+    Car_Parameters();
+	Set r_count to 0
+	Set first_obstacle to 0
+
+    Begin infinite loop
+        Set_Motion();
+        Set_Neutral();
+        Print_Data();
+
+        if range is less than 50 cm and 4 seconds have passed and first_obstacle is 0
+			Set Motor_PW to neutral
+			Set CCM2 based of Motor_PW;
+            Print instructions for turning left or right with 4 or 6 key press
+            while answer is not 4 and answer is not 6
+				Set answer equal to parallel input
+				Read_Print();
+
+            if answer is equal to 4
+				Set Servo_PW to max left
+            if answer is equal to 6
+				Set Servo_PW to max right
+            Set CCM0 with Servo_PW
+            Set Motor_PW to initial speed
+            Set CCM2 with Motor_PW
+            while getchar_nw() is not space
+                Read_Print();
+            Set answer equal to 0
+            Increment first_obstacle
+        while range is less than 35 cm and first_obstacle is greater than 0
+			Set Motor_PW to neutral value
+        	Set CCM2 with Motor_PW
+			Read_Print();
+    End infinite loop
 End main function
 
 
 Functions
-	Port_Init
+	XBR0_Init
 		Set crossbar to 0x27
+	End XBR0_Init
+
+	Port_Init
+		Set P1.0 and P1.2 to digital push-pull for CEX0 and CEX2
+		Set P1.7 to analog open drain for potentiometer
+		Set impedance high on P1.7
+		Set P3.7 to open drain for SS
+		Set impedance high on P3.7
 	End Port_Init
 	
 	Interrupt_Init
@@ -89,7 +126,7 @@ Functions
 	
 	PCA_Init
 		Set PCA0 mode to 0x81 (Enables CF flag, SYSCLK/12)
-		Set respective PCA0CPMn's to 16-bit PWM with comparator and PWM enabled
+		Set PCA0CPM0 and PCA0CPM2 to 16-bit PWM with comparator and PWM enabled
 		Enable PCA0 counter
 	End PCA_Init
 	
@@ -108,23 +145,16 @@ Functions
 	PCA_ISR __interrupt 9
 		If CF flag is raised
 			Lower CF flag
-			Set PCA0 to PCA_START using bit shifting and low/high bytes
-			Increment PCA_overflows
-			Increment nestedCount
-			If nestedCount >= 2
-				Raise compassFlag
-			If nestedCount >= 4
-				Raise compassFlag
-				Raise rangerFlag
-				Set nestedCount to 0
-		Else
-			Handle all other interrupt 9 flags with PCA0CN
+			Set PCA0 to PCA_START
+			Increment r_count
+			Increment print_count
+		Handle all other interrupt 9 flags with PCA0CN
 	End PCA_ISR __interrupt 9
 	
 	Set_Neutral
 		If SS is OFF
-			Set Servo_PW to SERVO_CENTER_PW
-			Set Motor_PW to MOTOR_NEUTRAL_PW
+			Set CCM0 with SERVO_CENTER_PW
+			Set CCM2 with MOTOR_NEUTRAL_PW
 			Wait while (SS is OFF)
 	End Set_Neutral
 	
@@ -142,69 +172,162 @@ Functions
 	End Print_Data
 	
 	Car_Parameters
+		unsigned int temp;
 		Set Servo_PW to SERVO_CENTER_PW
 		Set Motor_PW to MOTOR_NEUTRAL_PW
-		Print instructions to select cardinal direction with keypad or computer keyboard
-		Begin infinite loop
-			Set keyboard to getchar_nw()
-			Set keypad to read_keypad()
-			Pause()
-			If keypad is '5'
-				break
-			if keyboard is 'a' 
-				break
-			If keypad is not 0xFF
-				print out selected keypad direction and ask for confirmation of direction
-			If keyboard is not 0xFF
-				print out selected keyboard direction and ask for confirmation of direction
-		End infinite loop
-		If keypad is '2' OR keyboard is 'n'
-			Set desired_heading to 0
-		If keypad is '6' OR keyboard is 'e'
-			Set desired_heading to 900
-		If keypad is '8' OR keyboard is 's'
-			Set desired_heading to 1800
-		If keypad is '4' OR keyboard is 'w'
-			Set desired_heading to 2700
+		Set CCM0 with Servo_PW;
+		Set CCM2 with Motor_PW;
+
+
+		Print starting message to console
+
+		Wait()
+		Print calibration for LCD keypad screen
+		Wait()
+		
+		
+		Print instructions for setting gain on keypad screen and terminal
+		calibrate()
+		Set gain to read_AD_input with a float casting
+		Print selected gain to terminal and to keypad screen with char casting
+		Wait()
+		
+		do
+			Print instructions to select desired_heading from 0 to 3599 on terminal and keypad screen
+			Set desired_heading to calibrate()
+			Wait()
+		while desired_heading > 3599
+		Print desired_heading
+		
+		do
+		{
+			Print instructions to select initial_speed from 2765 to 3502 on terminal and keypad screen
+			Set initial_speed to calibrate()
+			Wait()
+		}
+		while initial_speed < 2765 OR initial_speed > 3502
+		Print initial_speed
+		
+		Wait()
+		Set Motor_PW to initial_speed
+		Set CCM2 with Motor_PW
 	End Car_Parameters
 	
+	Read_Print
+		Read_Compass()
+		Read_Ranger()
+		Print_Data()
+	End Read_Print
+	
+	Print_Data
+		If print_count > 20
+			Increment time by print_count / 5
+			Print time, heading_error, Servo_PW, and range
+	End Print_Data
+	
 	Read_Compass
-		If compassFlag is raised
-			lower compassFlag
+		If r_count % 2 is zero AND r_count is not 0
 			i2c_read_data(COMPASS_ADDR, 2, Data, 2)
 			Set current heading to Data with bit shifting
-			Increment readCount
+			Set heading_error to desired_heading - current_heading
+			If heading_error > 1800
+				Set heading_error to heading_error - 3599
+			If heading_error < -1800
+				Set heading_error to heading_error + 3599
 	End Read_Compass
 	
 	Read_Ranger
-		If rangerFlag is raised
-			lower rangerFlag
+		If r_count > 4
+			Set r_count to 0
 			i2c_read_data(RANGER_ADDR, 2, Data, 2)
 			Set range to Data with bit shifting
 			Set Data[0] to PING_CM
 			i2c_write_data (RANGER_ADDR, 0, Data, 1)
-			Set Data to 0
 	End Read_Ranger
 	
 	Set_Servo_PWM
-		
+		Set Servo_PW to gain*(heading_error) + SERVO_CENTER_PW
+		If Servo_PW > SERVO_RIGHT_PW
+			Set Servo_PW to SERVO_RIGHT_PW
+		If Servo_PW < SERVO_LEFT_PW
+			Set Servo_PW to SERVO_LEFT_PW
+		Set CCM0 wit Servo_PW
 	End Set_Servo_PWM
 	
 	Set_Motor_PWM
-	
+		Set Motor_PW to initial_speed
+		Set CCM2 with Motor_PW
 	End Set_Motor_PWM
 	
 	Pause
-		Set nestedCount to 0
-		Wait until nestedCount >= 6
+		Set r_count to 0
+		Wait while r_count < 2
 	End Pause
 	
+	Wait
+		Set r_count to 0
+		Wait while r_count < 50
+	End Wait
 	
+	pow
+		Declare local variables
+			unsigned char i
+			unsigned char base
+			Set base to a
+		If b is 0
+			return 1
+		for i = 1; i < b; i++
+			Set a to a*base
+		return a 
+	End pow
 	
+	calibrate
+		Declare local variables
+			unsigned char keypad, keyboard, isPress, pressCheck
+			Set isPress and pressCheck to 0
+			unsigned int value
+			Set value to 0
+		Begin infinite loop
+			Set keyboard to getchar_nw()
+			Set keypad to read_keypad()
+			Pause()
+			If keyboard OR keypad is '#'
+				return value
+			If isPress > pressCheck AND keypad is 0xFF AND keyboard is 0xFF
+				Increment pressCheck
+			If pressCheck is 6
+				Set pressCheck, isPress, and value to 0
+				Clear LCD and terminal print screens
+			If isPress is equal to pressCheck
+				If keypad is not 0xFF
+					Print keypad character to LCD and terminal
+					Set value to value + keypad - '0' multipled by pow(10,4 - isPress)
+					Increment isPress
+				If keyboard is not 0xFF
+					Print keyboard character to LCD screen
+					Set value to value + keyboard - '0' multipled by pow(10,4 - isPress)
+					Increment isPress
+		End infinite loop
+	End calibrate
 	
+	parallel_input
+		Declare local variables
+			unsigned char keypad, keyboard
+		Set keyboard to getchar_nw()
+		Set keypad to read_keypad()
+		Pause()
+		If keyboard is not 0xFF
+			return keyboard
+		If keypad is not 0xFF
+			return keypad
+		else
+			return 0
+	End parallel_input
 	
-	
-	
-	
-	
-	
+	read_AD_input
+		Set multiplexer pin to be converted
+		Clear A/D conversion bit
+		Start A/D conversion
+		Wait until conversion finishes
+		return ADC1
+	End read_AD_input
