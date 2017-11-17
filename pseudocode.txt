@@ -30,23 +30,23 @@ function prototypes
 		void SMB_Init();
 
 	High Level Functions
-		void Read_Compass(void);
-		void Read_Ranger(void);
-		void Set_Servo_PWM(void);
-		void Set_Motor_PWM(void);
-		void Read_Print(void);
-	
-	Low Level Functions
-		unsigned int pow(unsigned int a, unsigned char b);
-		unsigned int calibrate(void);
-		unsigned char parallel_input(void);
-		unsigned char read_AD_input(unsigned char pin_number);
 		void Car_Parameters(void);
 		void Set_Motion(void);
 		void Set_Neutral(void);
 		void Print_Data(void);
+		void Read_Print(void);
+	
+	Low Level Functions
+		void Read_Compass(void);
+		void Read_Ranger(void);
+		void Set_Servo_PWM(void);
+		void Set_Motor_PWM(void);
 		void Pause(void);
 		void Wait(void);
+		unsigned int pow(unsigned int a, unsigned char b);
+		unsigned int calibrate(void);
+		unsigned char parallel_input(void);
+		unsigned char read_AD_input(unsigned char pin_number);
 
 global variables
 	unsigned char Data[2];
@@ -61,6 +61,7 @@ sbits
 	__sbit __at 0xB7 SS;
 	
 main function
+    //Call all initialization functions for the chip
     Sys_Init();
     putchar(' ');
     Port_Init();
@@ -70,38 +71,62 @@ main function
     SMB_Init();
     ADC_Init();
 
+    //Get user parameters for gain, heading, and speed
     Car_Parameters();
+
+    //Reset time/logic keeping variables
 	Set r_count to 0
 	Set first_obstacle to 0
 
     Begin infinite loop
+        //Read compass, ranger; set respective PWs
         Set_Motion();
+
+        //Check for SS on; if so, center steering and stop car
         Set_Neutral();
+
+        //Print data for collection
         Print_Data();
 
         if range is less than 50 cm and 4 seconds have passed and first_obstacle is 0
+            //Stop the car:
 			Set Motor_PW to neutral
 			Set CCM2 based of Motor_PW;
+
+            //Get user direction:
             Print instructions for turning left or right with 4 or 6 key press
             while answer is not 4 and answer is not 6
 				Set answer equal to parallel input
 				Read_Print();
 
+            //User input left (4):
             if answer is equal to 4
 				Set Servo_PW to max left
+            //User input right (6):
             if answer is equal to 6
 				Set Servo_PW to max right
+            //Adjust as per user request:
             Set CCM0 with Servo_PW
             Set Motor_PW to initial speed
             Set CCM2 with Motor_PW
+
+            //Wait for user to input ' ', i.e. stop turning:
             while getchar_nw() is not space
                 Read_Print();
+
+            //Have space: can continue as before first obstacle.
+
+            //Change marker variables so we don't enter this loop again:
             Set answer equal to 0
             Increment first_obstacle
+
+        //For second obstacle:
         while range is less than 35 cm and first_obstacle is greater than 0
+            //Stop car. Can keep printing data.
 			Set Motor_PW to neutral value
         	Set CCM2 with Motor_PW
 			Read_Print();
+
     End infinite loop
 End main function
 
@@ -152,10 +177,10 @@ Functions
 	End PCA_ISR __interrupt 9
 	
 	Set_Neutral
-		If SS is OFF
+		If SS is ON
 			Set CCM0 with SERVO_CENTER_PW
 			Set CCM2 with MOTOR_NEUTRAL_PW
-			Wait while (SS is OFF)
+			Wait while (SS is ON)
 	End Set_Neutral
 	
 	Set_Motion
@@ -166,9 +191,10 @@ Functions
 	End Set_Motion
 	
 	Print_Data
-		If readCount > 25
-			Set readCount to 0
-			print heading_error and Motor_PW
+		If print_count > 20
+            Increment time by print_count/5
+			Set print_count to 0
+			Print heading_error and Motor_PW
 	End Print_Data
 	
 	Car_Parameters
@@ -192,6 +218,7 @@ Functions
 		Print selected gain to terminal and to keypad screen with char casting
 		Wait()
 		
+        //Run until you get a valid heading
 		do
 			Print instructions to select desired_heading from 0 to 3599 on terminal and keypad screen
 			Set desired_heading to calibrate()
@@ -199,6 +226,7 @@ Functions
 		while desired_heading > 3599
 		Print desired_heading
 		
+        //Run until you get a speed between neutral and max
 		do
 		{
 			Print instructions to select initial_speed from 2765 to 3502 on terminal and keypad screen
@@ -226,10 +254,16 @@ Functions
 	End Print_Data
 	
 	Read_Compass
+        //Only call every 40 ms; extra precaution with reset in Read_Ranger (goes from 4 to 0)
 		If r_count % 2 is zero AND r_count is not 0
+
+            //Read compass reading:
 			i2c_read_data(COMPASS_ADDR, 2, Data, 2)
+
 			Set current heading to Data with bit shifting
 			Set heading_error to desired_heading - current_heading
+
+            //Check how to turn:
 			If heading_error > 1800
 				Set heading_error to heading_error - 3599
 			If heading_error < -1800
@@ -237,39 +271,54 @@ Functions
 	End Read_Compass
 	
 	Read_Ranger
+        //Only call every 80 ms; reset counter
 		If r_count > 4
 			Set r_count to 0
+
+            //Read ranger reading:
 			i2c_read_data(RANGER_ADDR, 2, Data, 2)
+
 			Set range to Data with bit shifting
+
+            //Start the next ping:
 			Set Data[0] to PING_CM
 			i2c_write_data (RANGER_ADDR, 0, Data, 1)
 	End Read_Ranger
 	
 	Set_Servo_PWM
+        //Steer proportionately to how bad our current heading is:
 		Set Servo_PW to gain*(heading_error) + SERVO_CENTER_PW
+
+        //Don't overstep max bounds: don't break car linkages
 		If Servo_PW > SERVO_RIGHT_PW
 			Set Servo_PW to SERVO_RIGHT_PW
 		If Servo_PW < SERVO_LEFT_PW
 			Set Servo_PW to SERVO_LEFT_PW
+
+        //Set servo:
 		Set CCM0 wit Servo_PW
 	End Set_Servo_PWM
 	
 	Set_Motor_PWM
+        //We only stop or go; no proportional drive for this lab
 		Set Motor_PW to initial_speed
 		Set CCM2 with Motor_PW
 	End Set_Motor_PWM
 	
 	Pause
+        //40 ms delay
 		Set r_count to 0
 		Wait while r_count < 2
 	End Pause
 	
 	Wait
+        //1 s delay
 		Set r_count to 0
 		Wait while r_count < 50
 	End Wait
 	
 	pow
+        //math function: a^b
 		Declare local variables
 			unsigned char i
 			unsigned char base
@@ -284,28 +333,44 @@ Functions
 	calibrate
 		Declare local variables
 			unsigned char keypad, keyboard, isPress, pressCheck
-			Set isPress and pressCheck to 0
 			unsigned int value
+			Set isPress and pressCheck to 0
 			Set value to 0
+
 		Begin infinite loop
+            //Read from either keyboard terminal or LCD keypad:
 			Set keyboard to getchar_nw()
 			Set keypad to read_keypad()
+
+            //Don't overload keypad; pause a little
 			Pause()
+
+            //When we get '#' to confirm end of input, done with calibrate:
 			If keyboard OR keypad is '#'
 				return value
+
+            //Increments pressCheck when keys are released:
 			If isPress > pressCheck AND keypad is 0xFF AND keyboard is 0xFF
 				Increment pressCheck
+
+            //Got a 6th key pressed then released, reset
 			If pressCheck is 6
 				Set pressCheck, isPress, and value to 0
 				Clear LCD and terminal print screens
+
+            //isPress == pressCheck only when no key held
 			If isPress is equal to pressCheck
+
+                //Keypad press:
 				If keypad is not 0xFF
 					Print keypad character to LCD and terminal
-					Set value to value + keypad - '0' multipled by pow(10,4 - isPress)
+					Set value to value + keypad - '0' multipled by pow(10, 4 - isPress)
 					Increment isPress
+
+                //Keyboard press:
 				If keyboard is not 0xFF
 					Print keyboard character to LCD screen
-					Set value to value + keyboard - '0' multipled by pow(10,4 - isPress)
+					Set value to value + keyboard - '0' multipled by pow(10, 4 - isPress)
 					Increment isPress
 		End infinite loop
 	End calibrate
@@ -313,13 +378,20 @@ Functions
 	parallel_input
 		Declare local variables
 			unsigned char keypad, keyboard
+
 		Set keyboard to getchar_nw()
 		Set keypad to read_keypad()
+
+        //Don't overload keypad; pause a little
 		Pause()
+
+        //If something received, return:
 		If keyboard is not 0xFF
 			return keyboard
 		If keypad is not 0xFF
 			return keypad
+
+        //If nothing received, return 0
 		else
 			return 0
 	End parallel_input
