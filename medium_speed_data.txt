@@ -1,0 +1,116 @@
+ 
+ Start
+Turn the potentiometer clockwise to increase the steering gain from 0 to 10.2.
+Press # when you are finished.#
+Your gain is 1.9
+Select a desired heading (0 to 3599) by inputing 5 digits. Lead with a 0. Press # to confirm.
+027#
+You selected 2700 as your heading
+Select an initial speed (2765 to 3502) by inputing 5 digits. Lead with a 0. Press # to confirm.
+0295#
+You selected 2950 as your speed
+4,62,3014,154
+8,61,3012,146
+12,60,3010,95
+16,59,3008,150
+20,60,3010,124
+24,62,3014,153
+28,61,3012,148 
+               Start
+Turn the potentiometer clockwise to increase the steering gain from 0 to 10.2.
+Press # when you are finished.#
+Your gain is 1.9
+Select a desired heading (0 to 3599) by inputing 5 digits. Lead with a 0. Press # to confirm.
+027#
+You selected 2700 as your heading
+Select an initial speed (2765 to 3502) by inputing 5 digits. Lead with a 0. Press # to confirm.
+03#
+You selected 3000 as your speed
+4,60,3010,155
+8,60,3010,96
+12,61,3012,87
+16,62,3014,94
+20,58,3006,198
+24,59,3008,101 
+               Start
+Turn the potentiometer clockwise to increase the steering gain from 0 to 10.2.
+Press # when you are finished.#
+Your gain is 2.0
+Select a desired heading (0 to 3599) by inputing 5 digits. Lead with a 0. Press # to confirm.
+027#
+You selected 2700 as your heading
+Select an initial speed (2765 to 3502) by inputing 5 digits. Lead with a 0. Press # to confirm.
+0305#
+You selected 3050 as your speed
+4,53,2998,89
+8,53,2998,89
+12,54,3000,93
+16,48,2989,93
+20,48,2989,99
+24,47,2987,95
+28,48,2989,94 
+              Start
+Turn the potentiometer clockwise to increase the steering gain from 0 to 10.2.
+Press # when you are finished.#
+Your gain is 1.9
+Select a desired heading (0 to 3599) by inputing 5 digits. Lead with a 0. Press # to confirm.
+027#
+You selected 2700 as your heading
+Select an initial speed (2765 to 3502) by inputing 5 digits. Lead with a 0. Press # to confirm.
+0325# 
+You selected 3250 as your speed
+4,28,2948,96
+8,-134,2637,159
+12,-222,2468,138
+16,-200,2511,102
+20,-178,2553,150
+24,-167,2574,140
+28,-52,2795,130
+32,182,3244,121
+36,247,3245,109
+40,156,3194,93
+44,-41,2816,85
+48,-88,2726,75
+52,-40,2818,63
+56,99,3085,52Press 4 for left or 6 for right.
+Press space to return to normal path.
+
+60,127,3085,49
+64,127,3085,49
+68,128,3085,49
+72,129,3085,49
+76,127,3085,494
+80,133,2425,44
+84,244,2425,34
+88,295,2425,22
+92,302,2425,21
+96,286,2425,183
+100,260,2425,328
+104,263,2425,125 
+108,254,3245,123
+112,111,3108,181
+116,-17,2862,249
+120,-79,2743,240
+124,-102,2699,129
+128,-75,2751,244
+132,-49,2800,117
+136,-14,2868,127
+140,39,2969,148
+144,97,3081,225
+148,69,3027,107
+152,-48,2802,130
+156,-167,2574,130
+160,-260,2425,74
+164,-296,2425,67
+168,-308,2425,67
+172,-291,2425,47
+176,-271,2425,52
+180,-227,2459,48
+184,-204,2503,45
+188,-204,2503,43
+192,-195,2509,29
+196,-193,2509,32
+200,-194,2509,31
+204,-195,2509,32
+208,-192,2509,32
+212,-192,2509,32

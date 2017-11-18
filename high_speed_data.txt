@@ -1,0 +1,53 @@
+ 
+ Start
+Turn the potentiometer clockwise to increase the steering gain from 0 to 10.2.
+Press # when you are finished.#
+Your gain is 2.0
+Select a desired heading (0 to 3599) by inputing 5 digits. Lead with a 0. Press # to confirm.
+027#
+You selected 2700 as your heading
+Select an initial speed (2765 to 3502) by inputing 5 digits. Lead with a 0. Press # to confirm.
+0335#
+You selected 3350 as your speed
+4,-290,2425,127
+8,-196,2510,132
+12,-109,2681,123
+16,211,3245,109
+20,173,3234,89
+24,-26,2844,76
+28,-58,2781,61Press 4 for left or 6 for right.
+Press space to return to normal path.
+
+32,84,2916,50
+36,125,2916,50
+40,122,2916,50
+44,126,2916,50
+48,124,2916,50
+52,126,2916,504
+56,130,2425,40
+60,296,2425,26
+64,361,2425,11
+68,362,2425,10
+72,342,2425,12
+76,346,2425,171 
+80,384,3245,166
+84,365,3245,211
+88,193,3245,221
+92,0,2895,240
+96,-120,2659,197
+100,-101,2697,249
+104,-56,2785,199
+108,30,2953,155
+112,56,3004,135
+116,-68,2761,139
+120,-221,2461,170
+124,-284,2425,154
+128,-342,2425,140
+132,-380,2425,106
+136,-400,2425,114
+140,-396,2425,109
+144,-389,2425,109
+148,-381,2425,182
+152,-379,2425,117
+156,-335,2425,9
+160,-328,2425,24

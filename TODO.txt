@@ -1,0 +1,50 @@
+Tentative Schedule
+#	I want to have the lab 2 design report open for reference
+#	1. Get checked off for Lab 4 (S T)
+#	1.5 Check to see if current data is OK
+#		Gimme high and low pots, w/t different ranger thresholds and initial speeds
+#		(Get combos of low and high gain, low and high range threshold, low and high speed)
+#	2. Complete plots (M), review pseudocode (S T)
+#	3. Lab Notebook and Design Report free-for-all
+
+
+Design Report
+#	Intro (S)
+#	Results, Plots, Analysis of Plots, Conclusions
+#		Description of Goal achieved (S)
+#		Verification (performance evaluation; was it up to spec?) (S)
+#		Logical layout of data & presentation of plots
+#		Labeled axes WITH UNITS
+#		Analysis of plots from data with explanations (M does first, S and T after)
+#		What was learned (T)
+#		Problems Encountered and Solutions (T)
+#		Suggested improvements to HW & SW (T)
+#	Code
+#		DO NOT ATTACH TO REPORT
+#		PLEASE UPLOAD CODE TO LMS
+#			Fully commented
+#			Last names
+#			ONLY 1 PER TEAM
+#	Formatting and Neatness
+#		Names, sec/side, Grading TA
+#		Spelling & Grammar
+#		Academic Integrity & Division of Labor SIGNED
+	
+Lab Notebook
+#	Title (T)
+#	Description (S)
+#	Worksheets
+#	Pseudocode (T)
+#	Circuit Schematics (M)
+#	Data and Notes (M)
+#	Data Analysis (S)
+#	Computer Code (M)
+	
+Prelab for 5
+
+HW #11
+
+
+
+
+	
